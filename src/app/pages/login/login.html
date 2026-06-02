@@ -1,0 +1,110 @@
+    <div class="login-wrapper">
+      <div class="login-container">
+        
+        <div class="success-toast" [class.show]="showToast()">
+          <svg class="icon-toast" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{{ toastMessage() }}</span>
+        </div>
+
+        <div class="login-content">
+          <div class="login-header">
+            <h1 class="title">Anmeldung</h1>
+            <p class="subtitle">
+              Wir empfehlen dir, die E-Mail-Adresse zu nutzen, die du bei der Arbeit verwendest.
+            </p>
+          </div>
+
+          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form" novalidate>
+            
+            <div class="input-group">
+              <div class="input-wrapper" [class.has-error]="isFieldInvalid('email')">
+
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <input 
+                  type="email" 
+                  formControlName="email" 
+                  placeholder="beispielname@email.com" 
+                  class="form-control"
+                />
+              </div>
+             
+              @if (isFieldInvalid('email')) {
+                <p class="error-text">*Diese E-Mail-Adresse ist leider ungültig.</p>
+              }
+            </div>
+
+         
+            <div class="input-group">
+              <div class="input-wrapper" [class.has-error]="isFieldInvalid('password')">
+             
+                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <input 
+                  [type]="showPassword() ? 'text' : 'password'" 
+                  formControlName="password" 
+                  placeholder="Passwort" 
+                  class="form-control"
+                />
+            
+                <button type="button" class="btn-toggle-password" (click)="togglePassword()">
+                  @if (showPassword()) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  }
+                </button>
+              </div>
+             
+              @if (isFieldInvalid('password')) {
+                <p class="error-text">Falsches Passwort. Bitte noch einmal versuchen.</p>
+              }
+            </div>
+
+            
+            <div class="forgot-password-container">
+              <button type="button" class="btn-forgot-password" (click)="forgotPassword()">
+                Passwort vergessen?
+              </button>
+            </div>
+          </form>
+
+   
+          <div class="separator-container">
+            <div class="separator-line"></div>
+            <span class="separator-text">ODER</span>
+          </div>
+
+       
+          <div class="google-container">
+            <button type="button" class="btn-google" (click)="loginWithGoogle()">
+           
+              <svg class="google-icon" viewBox="0 0 24 24">
+                <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.245-3.125C18.465 1.926 15.56 1 12.24 1 6.13 1 1.13 5.923 1.13 12s5 11 11.11 11c6.38 0 10.62-4.413 10.62-10.635 0-.715-.075-1.26-.17-1.68H12.24z"/>
+              </svg>
+              <span>Anmelden mit Google</span>
+            </button>
+          </div>
+        </div>
+
+      
+        <div class="action-footer">
+          <button type="button" class="btn-primary" (click)="onSubmit()">
+            Anmelden
+          </button>
+          <button type="button" class="btn-secondary" (click)="loginAsGuest()">
+            Gäste-Login
+          </button>
+        </div>
+
+      </div>
+    </div>

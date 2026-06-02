@@ -1,0 +1,167 @@
+<main class="page">
+  <header class="header">
+    <div class="logo-container">
+      <img src="/assets/logo.svg" alt="DABubble Logo" class="logo" />
+    </div>
+
+    <div class="searchbar-container" aria-label="Suche">
+      <input type="text" placeholder="Devspace durchsuchen" class="searchbar" />
+    </div>
+
+    <button type="button" class="profile-container" aria-label="Profil öffnen">
+      <img src="/assets/profile (2).svg" alt="" class="profile-image" />
+    </button>
+  </header>
+
+  <aside class="left-panel" aria-label="Seitenmenü">
+    <div class="sidebar-card">
+      <div class="workspace-row">
+        <img src="/assets/links.svg" alt="" class="workspace-logo" />
+        <div class="workspace-text">
+          <span class="workspace-name">Devspace</span>
+        </div>
+        <button type="button" class="icon-button" aria-label="Workspace bearbeiten">
+          <span class="icon icon-edit"></span>
+        </button>
+      </div>
+
+      <section class="sidebar-section">
+        <div class="section-header">
+          <h2>Channels</h2>
+          <button type="button" class="icon-button" aria-label="Channel hinzufügen">
+            <span class="icon icon-plus"></span>
+          </button>
+        </div>
+
+        <nav class="channel-list" aria-label="Kanäle">
+          <a href="#" class="channel-item active">
+            <span class="icon icon-tag"></span>
+            <span>Entwicklerteam</span>
+          </a>
+          <a href="#" class="channel-item add">
+            <span class="icon icon-plus"></span>
+            <span>Channel hinzufügen</span>
+          </a>
+        </nav>
+      </section>
+
+      <section class="sidebar-section dm-section">
+        <div class="section-header">
+          <h2>Direktnachrichten</h2>
+          <button type="button" class="icon-button" aria-label="Direktnachricht hinzufügen">
+            <span class="icon icon-plus"></span>
+          </button>
+        </div>
+
+        <nav class="dm-list" aria-label="Direktnachrichten">
+          <a href="#" class="dm-item">
+            <span class="avatar avatar-1"></span>
+            <span class="dm-name">Alice Becker</span>
+            <span class="status online" aria-label="Online"></span>
+          </a>
+          <a href="#" class="dm-item">
+            <span class="avatar avatar-2"></span>
+            <span class="dm-name">Max Mustermann</span>
+          </a>
+          <a href="#" class="dm-item">
+            <span class="avatar avatar-3"></span>
+            <span class="dm-name">Sarah Klein</span>
+            <span class="status online" aria-label="Online"></span>
+          </a>
+          <a href="#" class="dm-item">
+            <span class="avatar avatar-4"></span>
+            <span class="dm-name">Jonathan Bauer</span>
+          </a>
+        </nav>
+      </section>
+    </div>
+  </aside>
+
+  <section class="center-panel" aria-label="Hauptbereich">
+    <div class="center-card">
+      <header class="chat-header">
+        <button type="button" class="channel-title" aria-label="Channel-Details öffnen">
+          <span class="channel-icon"></span>
+          <span class="channel-name">Entwicklerteam</span>
+          <span class="channel-arrow"></span>
+        </button>
+
+        <div class="members-area" aria-label="Mitglieder">
+          <div class="members-preview">
+            <span class="member-avatar avatar-3"></span>
+            <span class="member-avatar avatar-2"></span>
+            <span class="member-avatar avatar-1"></span>
+          </div>
+          <button type="button" class="add-members" aria-label="Mitglieder hinzufügen">
+            <span class="icon icon-plus"></span>
+          </button>
+        </div>
+      </header>
+
+      <div class="chat-body">
+        <div class="time-separator">
+          <span class="time-line"></span>
+          <span class="time-pill">Dienstag, 14 Januar</span>
+        </div>
+
+        <article class="message message-right">
+          <div class="message-meta">
+            <span class="message-time">15:06 Uhr</span>
+            <span class="message-name">Frederik Beck</span>
+          </div>
+          <div class="speech-bubble">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque blandit odio efficitur lectus vestibulum, quis accumsan ante vulputate. Quisque tristique iaculis erat, eu faucibus lacus iaculis ac.</div>
+          <div class="reaction-bar">
+            <button type="button" class="reaction-chip" aria-label="Check-Reaktion">
+              <span class="reaction-icon reaction-check"></span>
+              <span>1</span>
+            </button>
+            <button type="button" class="reaction-chip reaction-add" aria-label="Reaktion hinzufügen">
+              <span class="icon icon-plus"></span>
+            </button>
+            <button type="button" class="reaction-chip reaction-comment" aria-label="Antworten">
+              <span class="reaction-dot"></span>
+            </button>
+            <button type="button" class="reaction-chip reaction-more" aria-label="Mehr">
+              <span class="reaction-more-dots"></span>
+            </button>
+          </div>
+        </article>
+
+        <article class="message message-left">
+          <div class="avatar message-avatar avatar-1"></div>
+          <div class="message-content">
+            <div class="message-meta">
+              <span class="message-name">Mia Hansen</span>
+              <span class="message-time">15:12 Uhr</span>
+            </div>
+            <div class="speech-bubble speech-bubble-left">Kurze Frage: Soll ich das Layout noch mehr wie im SVG ziehen oder lieber schon die Interaktion einbauen?</div>
+          </div>
+        </article>
+      </div>
+
+      <form class="message-box" aria-label="Nachricht schreiben">
+        <label class="message-input-label" for="chat-message">Nachricht an #Entwicklerteam</label>
+        <textarea id="chat-message" class="message-input" rows="2" placeholder="Schreib eine Nachricht"></textarea>
+
+        <div class="message-actions">
+          <div class="add-elements">
+            <button type="button" class="action-button" aria-label="Emoji hinzufügen">
+              <span class="action-icon action-smile"></span>
+            </button>
+            <button type="button" class="action-button" aria-label="Datei hinzufügen">
+              <span class="action-icon action-mail"></span>
+            </button>
+          </div>
+
+          <button type="submit" class="send-button" aria-label="Senden">
+            <span class="send-icon"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <aside class="right-panel" aria-label="Rechter Bereich">
+    <img src="/assets/rechts.svg" alt="Rechter Bereich" class="panel-image" />
+  </aside>
+</main>
