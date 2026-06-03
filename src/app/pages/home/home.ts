@@ -57,26 +57,23 @@ export class Home {
   }
 
   protected profileAvatarBackgroundPosition(): string {
-    switch (this.profileAvatarId()) {
-      case 1:
-        return '-4px -99px';
-      case 2:
-        return '-84px -99px';
-      case 3:
-        return '-164px -99px';
-      case 4:
-        return '-244px -99px';
-      case 5:
-        return '-324px -99px';
-      case 6:
-        return '-404px -99px';
-      default:
-        return 'center';
-    }
+    return this.profileSpritePosition(168 / 64);
   }
 
   protected profileAvatarBackgroundSize(): string {
-    return this.profileAvatarId() ? '1239px 438.375px' : 'contain';
+    return this.profileAvatarId() ? this.profileSpriteBackgroundSize(168 / 64) : 'contain';
+  }
+
+  protected headerAvatarBackgroundImage(): string {
+    return this.profileAvatarId() ? "url('/assets/avatar-sprite.svg')" : "url('/assets/profile-bild.svg')";
+  }
+
+  protected headerAvatarBackgroundPosition(): string {
+    return this.profileSpritePosition(70 / 64);
+  }
+
+  protected headerAvatarBackgroundSize(): string {
+    return this.profileAvatarId() ? this.profileSpriteBackgroundSize(70 / 64) : 'contain';
   }
 
   protected profileAvatarId(): number | null {
@@ -101,6 +98,32 @@ export class Home {
       default:
         return null;
     }
+  }
+
+  private profileSpritePosition(scale: number): string {
+    const x = 4 * scale;
+    const y = 99 * scale;
+
+    switch (this.profileAvatarId()) {
+      case 1:
+        return `-${x}px -${y}px`;
+      case 2:
+        return `-${84 * scale}px -${y}px`;
+      case 3:
+        return `-${164 * scale}px -${y}px`;
+      case 4:
+        return `-${244 * scale}px -${y}px`;
+      case 5:
+        return `-${324 * scale}px -${y}px`;
+      case 6:
+        return `-${404 * scale}px -${y}px`;
+      default:
+        return 'center';
+    }
+  }
+
+  private profileSpriteBackgroundSize(scale: number): string {
+    return `${472 * scale}px ${167 * scale}px`;
   }
 
   @HostListener('document:click', ['$event'])

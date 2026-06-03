@@ -111,9 +111,25 @@
 .profile-image {
   width: 70px;
   height: 70px;
-  object-fit: contain;
+  border-radius: 50%;
+  background-repeat: no-repeat;
+  background-color: transparent;
   display: block;
+  position: relative;
   flex: 0 0 auto;
+}
+
+.profile-image::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #eceefe;
+  border-radius: 50%;
+  background: #92c83e;
+  box-sizing: border-box;
 }
 
 .profile-dropdown {

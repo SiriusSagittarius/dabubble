@@ -19,7 +19,13 @@
         (click)="toggleProfileMenu()"
       >
         <span class="profile-name">{{ database.currentUser()?.name ?? 'Profil' }}</span>
-        <img src="/assets/profile-bild.svg" alt="" class="profile-image" />
+        <span
+          class="profile-image"
+          aria-hidden="true"
+          [style.backgroundImage]="headerAvatarBackgroundImage()"
+          [style.backgroundPosition]="headerAvatarBackgroundPosition()"
+          [style.backgroundSize]="headerAvatarBackgroundSize()"
+        ></span>
         <img src="/assets/keyboard-arrow-down.svg" alt="" class="profile-arrow" />
       </button>
 
