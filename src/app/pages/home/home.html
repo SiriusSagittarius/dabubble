@@ -45,40 +45,45 @@
   <aside class="left-panel" aria-label="Seitenmenue">
     <div class="sidebar-card">
       <div class="workspace-row">
-        <img src="/assets/links.svg" alt="" class="workspace-logo" />
+        <img src="/assets/workspace.svg" alt="" class="workspace-logo" />
         <div class="workspace-text">
           <span class="workspace-name">Devspace</span>
         </div>
-        <button type="button" class="icon-button" aria-label="Workspace bearbeiten">
-          <span class="icon icon-edit"></span>
+        <button type="button" class="workspace-edit-button" aria-label="Workspace bearbeiten">
+          <img src="/assets/edit.svg" alt="" class="workspace-edit-icon" />
         </button>
       </div>
 
       <section class="sidebar-section">
-        <div class="section-header">
-          <h2>Channels</h2>
-          <button type="button" class="icon-button" aria-label="Channel hinzufuegen">
-            <span class="icon icon-plus"></span>
-          </button>
+        <div class="channels-header-row" aria-label="Channels">
+          <img src="/assets/channels-header.svg" alt="" class="channels-header-image" />
+          <button
+            type="button"
+            class="channels-toggle-hit"
+            aria-label="Channels umschalten"
+            [attr.aria-expanded]="channelsExpanded()"
+            aria-controls="channel-list"
+            (click)="toggleChannels()"
+          ></button>
+          <button type="button" class="channels-add-hit" aria-label="Channel hinzufuegen" (click)="openAddChannelDialog()"></button>
+          <span class="sr-only">Channels</span>
         </div>
 
-        <nav class="channel-list" aria-label="Kanaele">
-          @for (channel of database.channels(); track channel.id) {
-            <a
-              href="#"
-              class="channel-item"
-              [class.active]="channel.id === database.activeChannel()?.id"
-              (click)="database.selectChannel(channel.id); $event.preventDefault()"
-            >
-              <span class="icon icon-tag"></span>
-              <span>{{ channel.name }}</span>
-            </a>
-          }
-          <a href="#" class="channel-item add" (click)="$event.preventDefault()">
-            <span class="icon icon-plus"></span>
-            <span>Channel hinzufuegen</span>
-          </a>
-        </nav>
+        @if (channelsExpanded()) {
+          <nav id="channel-list" class="channel-list" aria-label="Kanaele">
+            @for (channel of database.channels(); track channel.id) {
+              <a
+                href="#"
+                class="channel-item"
+                [class.active]="channel.id === database.activeChannel()?.id"
+                (click)="database.selectChannel(channel.id); $event.preventDefault()"
+              >
+                <span class="icon icon-tag"></span>
+                <span>{{ channel.name }}</span>
+              </a>
+            }
+          </nav>
+        }
       </section>
 
       <section class="sidebar-section dm-section">
@@ -340,27 +345,91 @@
         [attr.aria-label]="'Profil von ' + (database.currentUser()?.name ?? 'Benutzer')"
         (click)="$event.stopPropagation()"
       >
-        <button
-          type="button"
-          class="profile-modal-close"
-          aria-label="Fenster schliessen"
-          (click)="closeProfileDialog()"
-        >
-          <span class="profile-modal-close-icon"></span>
-        </button>
+        <div class="profile-modal-content">
+          <div class="profile-modal-top-row">
+            <span class="profile-modal-title">{{ profileEditMode ? 'Dein Profil bearbeiten' : 'Profil' }}</span>
+            <button
+              type="button"
+              class="profile-modal-close"
+              aria-label="Fenster schliessen"
+              (click)="closeProfileDialog()"
+            >
+              X
+            </button>
+          </div>
 
-        <div class="profile-modal-avatar">
-          <div
-            class="profile-modal-avatar-image"
-            [style.backgroundImage]="profileAvatarBackgroundImage()"
-            [style.backgroundPosition]="profileAvatarBackgroundPosition()"
-            [style.backgroundSize]="profileAvatarBackgroundSize()"
-          ></div>
+          <div class="profile-modal-avatar-stage">
+            <div class="profile-modal-avatar">
+              <div
+                class="profile-modal-avatar-image"
+                [style.backgroundImage]="profileAvatarBackgroundImage()"
+                [style.backgroundPosition]="profileAvatarBackgroundPosition()"
+                [style.backgroundSize]="profileAvatarBackgroundSize()"
+              ></div>
+            </div>
+          </div>
+
+          @if (!profileEditMode) {
+            <section class="profile-modal-info">
+              <div class="profile-modal-name-row">
+                <h2 class="profile-modal-name">{{ database.currentUser()?.name ?? 'Profil' }}</h2>
+                <button type="button" class="profile-modal-edit" (click)="editProfile()">Bearbeiten</button>
+              </div>
+
+              <div class="profile-modal-status-row">
+                <span class="profile-modal-status-dot" aria-hidden="true"></span>
+                <span class="profile-modal-status-text">Aktive</span>
+              </div>
+            </section>
+
+            <section class="profile-modal-email">
+              <div class="profile-modal-email-heading">
+                <img src="/assets/mail.svg" alt="" class="profile-modal-email-icon" />
+                <span class="profile-modal-email-label">E-Mail-Adresse</span>
+              </div>
+              <p class="profile-modal-email-address">{{ database.currentUser()?.email ?? '' }}</p>
+            </section>
+          } @else {
+            <section class="profile-modal-edit-panel" aria-label="Profil bearbeiten">
+              <div class="profile-modal-edit-label-row">
+                <img src="/assets/account_circle.svg" alt="" class="profile-modal-edit-label-icon" />
+                <label class="profile-modal-edit-label" for="profile-name-input">Vollständiger Name</label>
+              </div>
+
+              <div class="profile-modal-edit-field">
+                <input
+                  id="profile-name-input"
+                  type="text"
+                  class="profile-modal-edit-input"
+                  [value]="profileEditName"
+                  (input)="profileEditName = $any($event.target).value"
+                />
+              </div>
+
+              <div class="profile-modal-edit-actions">
+                <button type="button" class="profile-modal-cancel" (click)="cancelProfileEdit()">
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  class="profile-modal-save"
+                  [disabled]="!profileEditName.trim()"
+                  (click)="saveProfileEdit()"
+                >
+                  Speichern
+                </button>
+              </div>
+            </section>
+          }
         </div>
+      </section>
+    </div>
+  }
 
-        <h2 class="profile-modal-name">{{ database.currentUser()?.name ?? 'Profil' }}</h2>
-
-        <button type="button" class="profile-modal-edit" (click)="editProfile()">Bearbeiten</button>
+  @if (addChannelDialogOpen()) {
+    <div class="add-channel-backdrop" (click)="closeAddChannelDialog()">
+      <section class="add-channel-dialog" (click)="$event.stopPropagation()" aria-label="Channel hinzufuegen">
+        <img src="/assets/add-channel-dialog.svg" alt="" class="add-channel-dialog-image" />
       </section>
     </div>
   }

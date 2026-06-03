@@ -1,5 +1,11 @@
 <div class="auth-shell">
-  <img src="assets/logo.svg" alt="DABubble Logo" class="auth-logo" />
+  <img src="/assets/logo.svg" alt="DABubble Logo" class="auth-logo" />
+
+  @if (introVisible) {
+    <div class="auth-intro" [class.auth-intro--leave]="introLeaving" aria-hidden="true">
+      <img src="/assets/intro/default.svg" alt="" class="auth-intro-logo" />
+    </div>
+  }
 
   <nav class="auth-footer-links" aria-label="Rechtliches">
     <a routerLink="/info/legal">Impressum</a>

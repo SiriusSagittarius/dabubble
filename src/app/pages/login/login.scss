@@ -68,7 +68,7 @@
       }
     }
 
-    .login-container {
+.login-container {
       position: relative;
       width: 100%;
       max-width: 606px;
@@ -87,6 +87,56 @@
         padding: 30px 20px;
         min-height: auto;
       }
+    }
+
+    .login-success-overlay {
+      position: fixed;
+      right: 30px;
+      bottom: 5px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .login-success-overlay-card {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      width: 273px;
+      height: 149px;
+      padding: 50px 0 50px 50px;
+      gap: 10px;
+      background: #444DF2;
+      box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.2);
+      border-radius: 30px 30px 0px 30px;
+      box-sizing: border-box;
+      overflow: hidden;
+      animation: loginSuccessIn 280ms ease-out both;
+      will-change: transform, opacity;
+    }
+
+    .login-success-overlay-icon {
+      width: 40px;
+      height: 40px;
+      flex: none;
+      order: 0;
+      flex-grow: 0;
+    }
+
+    .login-success-overlay-text {
+      width: 173px;
+      height: 49px;
+      margin: 0;
+      font-family: 'Nunito', sans-serif;
+      font-style: normal;
+      font-weight: 700;
+      font-size: 36px;
+      line-height: 49px;
+      color: #FFFFFF;
+      flex: none;
+      order: 1;
+      flex-grow: 0;
+      white-space: nowrap;
     }
 
     .success-toast {
@@ -116,6 +166,18 @@
       .icon-toast {
         width: 20px;
         height: 20px;
+      }
+    }
+
+    @keyframes loginSuccessIn {
+      from {
+        opacity: 0;
+        transform: translate3d(120px, 120px, 0);
+      }
+
+      to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
       }
     }
 

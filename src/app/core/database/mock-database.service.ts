@@ -112,6 +112,45 @@ export class MockDatabaseService {
     return guest;
   }
 
+  requestPasswordReset(email: string): { ok: boolean; message: string } {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = this.state().users.find((entry) => entry.email.toLowerCase() === normalizedEmail);
+
+    if (!user) {
+      return { ok: false, message: 'Diese E-Mail ist nicht in der Mock-Datenbank.' };
+    }
+
+    return { ok: true, message: 'Wir haben dir eine E-Mail zum Zurücksetzen geschickt.' };
+  }
+
+  updatePasswordByEmail(email: string, newPassword: string): { ok: boolean; message: string } {
+    const normalizedEmail = email.trim().toLowerCase();
+    const nextPassword = newPassword;
+
+    if (!nextPassword.length) {
+      return { ok: false, message: 'Bitte ein neues Passwort eingeben.' };
+    }
+
+    const currentUser = this.state().users.find((entry) => entry.email.toLowerCase() === normalizedEmail);
+    if (!currentUser) {
+      return { ok: false, message: 'Diese E-Mail ist nicht in der Mock-Datenbank.' };
+    }
+
+    this.patchState((state) => ({
+      ...state,
+      users: state.users.map((user) =>
+        user.id === currentUser.id
+          ? {
+              ...user,
+              password: nextPassword,
+            }
+          : user,
+      ),
+    }));
+
+    return { ok: true, message: 'Passwort erfolgreich geändert.' };
+  }
+
   logout(): void {
     const currentUserId = this.state().currentUserId;
     if (!currentUserId) {
@@ -123,6 +162,32 @@ export class MockDatabaseService {
       currentUserId: '',
       users: state.users.map((user) => (user.id === currentUserId ? { ...user, isOnline: false } : user)),
     }));
+  }
+
+  updateCurrentUserName(name: string): MockUser | null {
+    const currentUserId = this.state().currentUserId;
+    const trimmedName = name.trim();
+
+    if (!currentUserId || !trimmedName) {
+      return null;
+    }
+
+    const currentUser = this.findUser(currentUserId);
+    if (!currentUser) {
+      return null;
+    }
+
+    const updatedUser: MockUser = {
+      ...currentUser,
+      name: trimmedName,
+    };
+
+    this.patchState((state) => ({
+      ...state,
+      users: state.users.map((user) => (user.id === currentUserId ? updatedUser : user)),
+    }));
+
+    return updatedUser;
   }
 
   registerUser(name: string, email: string, password: string, avatarId?: number | null): MockLoginResult {

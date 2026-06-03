@@ -16,6 +16,7 @@ export class Login {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly database = inject(MockDatabaseService);
+  private loginSuccessTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly loginForm = new FormGroup({
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -25,12 +26,17 @@ export class Login {
   protected readonly showPassword = signal(false);
   protected readonly showToast = signal(false);
   protected readonly toastMessage = signal('');
+  protected readonly showSuccessOverlay = signal(false);
 
   constructor() {
     this.loginForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (this.showToast()) {
         this.showToast.set(false);
       }
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.clearLoginSuccessTimer();
     });
   }
 
@@ -44,6 +50,8 @@ export class Login {
   }
 
   protected onSubmit(): void {
+    this.clearLoginSuccessTimer();
+    this.showSuccessOverlay.set(false);
     this.loginForm.markAllAsTouched();
     if (this.loginForm.invalid) {
       this.toastMessage.set('Bitte die Felder korrekt ausfuellen.');
@@ -60,7 +68,12 @@ export class Login {
       return;
     }
 
-    this.router.navigate(['/home']);
+    this.showToast.set(false);
+    this.showSuccessOverlay.set(true);
+    this.loginSuccessTimer = setTimeout(() => {
+      this.showSuccessOverlay.set(false);
+      this.router.navigate(['/home']);
+    }, 1600);
   }
 
   protected loginWithGoogle(): void {
@@ -71,5 +84,12 @@ export class Login {
   protected loginAsGuest(): void {
     this.database.loginAsGuest();
     this.router.navigate(['/home']);
+  }
+
+  private clearLoginSuccessTimer(): void {
+    if (this.loginSuccessTimer !== null) {
+      clearTimeout(this.loginSuccessTimer);
+      this.loginSuccessTimer = null;
+    }
   }
 }

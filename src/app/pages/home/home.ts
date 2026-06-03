@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, ViewChild, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { signal } from '@angular/core';
 
 import { MockDatabaseService } from '../../core/database/mock-database.service';
 
@@ -15,6 +16,10 @@ export class Home {
 
   protected profileMenuOpen = false;
   protected profileDialogOpen = false;
+  protected profileEditMode = false;
+  protected profileEditName = '';
+  protected readonly channelsExpanded = signal(true);
+  protected readonly addChannelDialogOpen = signal(false);
 
   @ViewChild('profileArea', { read: ElementRef })
   private profileArea?: ElementRef<HTMLElement>;
@@ -27,6 +32,18 @@ export class Home {
     this.database.sendThreadReply(body);
   }
 
+  protected toggleChannels(): void {
+    this.channelsExpanded.update((value) => !value);
+  }
+
+  protected openAddChannelDialog(): void {
+    this.addChannelDialogOpen.set(true);
+  }
+
+  protected closeAddChannelDialog(): void {
+    this.addChannelDialogOpen.set(false);
+  }
+
   protected toggleProfileMenu(): void {
     this.profileMenuOpen = !this.profileMenuOpen;
   }
@@ -34,22 +51,41 @@ export class Home {
   protected openProfile(): void {
     this.profileMenuOpen = false;
     this.profileDialogOpen = true;
+    this.profileEditMode = false;
+    this.profileEditName = this.database.currentUser()?.name ?? '';
   }
 
   protected logout(): void {
     this.profileMenuOpen = false;
     this.profileDialogOpen = false;
+    this.profileEditMode = false;
     this.database.logout();
     void this.router.navigate(['/login']);
   }
 
   protected closeProfileDialog(): void {
     this.profileDialogOpen = false;
+    this.profileEditMode = false;
   }
 
   protected editProfile(): void {
-    this.profileDialogOpen = false;
-    void this.router.navigate(['/avatar']);
+    this.profileEditMode = true;
+    this.profileEditName = this.database.currentUser()?.name ?? '';
+  }
+
+  protected cancelProfileEdit(): void {
+    this.profileEditMode = false;
+    this.profileEditName = this.database.currentUser()?.name ?? '';
+  }
+
+  protected saveProfileEdit(): void {
+    const updatedUser = this.database.updateCurrentUserName(this.profileEditName);
+    if (!updatedUser) {
+      return;
+    }
+
+    this.profileEditMode = false;
+    this.profileEditName = updatedUser.name;
   }
 
   protected profileAvatarBackgroundImage(): string {
@@ -144,5 +180,7 @@ export class Home {
   protected closeProfileMenuOnEscape(): void {
     this.profileMenuOpen = false;
     this.profileDialogOpen = false;
+    this.profileEditMode = false;
+    this.addChannelDialogOpen.set(false);
   }
 }
