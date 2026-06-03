@@ -6,14 +6,37 @@
 
     <div class="searchbar-container" aria-label="Suche">
       <input type="text" placeholder="Devspace durchsuchen" class="searchbar" />
+      <img src="/assets/search-icon.svg" alt="" class="searchbar-icon" />
     </div>
 
-    <button type="button" class="profile-container" aria-label="Profil öffnen">
-      <img src="/assets/profile (2).svg" alt="" class="profile-image" />
-    </button>
+    <div class="profile-area" #profileArea>
+      <button
+        type="button"
+        class="profile-container"
+        [attr.aria-label]="'Profil von ' + (database.currentUser()?.name ?? 'Benutzer')"
+        [attr.aria-expanded]="profileMenuOpen"
+        aria-haspopup="menu"
+        (click)="toggleProfileMenu()"
+      >
+        <span class="profile-name">{{ database.currentUser()?.name ?? 'Profil' }}</span>
+        <img src="/assets/profile-bild.svg" alt="" class="profile-image" />
+        <img src="/assets/keyboard-arrow-down.svg" alt="" class="profile-arrow" />
+      </button>
+
+      @if (profileMenuOpen) {
+        <div class="profile-dropdown" role="menu" aria-label="Profilmenue">
+          <button type="button" class="profile-dropdown-item" role="menuitem" (click)="openProfile()">
+            Profil
+          </button>
+          <button type="button" class="profile-dropdown-item" role="menuitem" (click)="logout()">
+            Log out
+          </button>
+        </div>
+      }
+    </div>
   </header>
 
-  <aside class="left-panel" aria-label="Seitenmenü">
+  <aside class="left-panel" aria-label="Seitenmenue">
     <div class="sidebar-card">
       <div class="workspace-row">
         <img src="/assets/links.svg" alt="" class="workspace-logo" />
@@ -28,19 +51,26 @@
       <section class="sidebar-section">
         <div class="section-header">
           <h2>Channels</h2>
-          <button type="button" class="icon-button" aria-label="Channel hinzufügen">
+          <button type="button" class="icon-button" aria-label="Channel hinzufuegen">
             <span class="icon icon-plus"></span>
           </button>
         </div>
 
-        <nav class="channel-list" aria-label="Kanäle">
-          <a href="#" class="channel-item active">
-            <span class="icon icon-tag"></span>
-            <span>Entwicklerteam</span>
-          </a>
-          <a href="#" class="channel-item add">
+        <nav class="channel-list" aria-label="Kanaele">
+          @for (channel of database.channels(); track channel.id) {
+            <a
+              href="#"
+              class="channel-item"
+              [class.active]="channel.id === database.activeChannel()?.id"
+              (click)="database.selectChannel(channel.id); $event.preventDefault()"
+            >
+              <span class="icon icon-tag"></span>
+              <span>{{ channel.name }}</span>
+            </a>
+          }
+          <a href="#" class="channel-item add" (click)="$event.preventDefault()">
             <span class="icon icon-plus"></span>
-            <span>Channel hinzufügen</span>
+            <span>Channel hinzufuegen</span>
           </a>
         </nav>
       </section>
@@ -48,30 +78,27 @@
       <section class="sidebar-section dm-section">
         <div class="section-header">
           <h2>Direktnachrichten</h2>
-          <button type="button" class="icon-button" aria-label="Direktnachricht hinzufügen">
+          <button type="button" class="icon-button" aria-label="Direktnachricht hinzufuegen">
             <span class="icon icon-plus"></span>
           </button>
         </div>
 
         <nav class="dm-list" aria-label="Direktnachrichten">
-          <a href="#" class="dm-item">
-            <span class="avatar avatar-1"></span>
-            <span class="dm-name">Alice Becker</span>
-            <span class="status online" aria-label="Online"></span>
-          </a>
-          <a href="#" class="dm-item">
-            <span class="avatar avatar-2"></span>
-            <span class="dm-name">Max Mustermann</span>
-          </a>
-          <a href="#" class="dm-item">
-            <span class="avatar avatar-3"></span>
-            <span class="dm-name">Sarah Klein</span>
-            <span class="status online" aria-label="Online"></span>
-          </a>
-          <a href="#" class="dm-item">
-            <span class="avatar avatar-4"></span>
-            <span class="dm-name">Jonathan Bauer</span>
-          </a>
+          @for (contact of database.contacts(); track contact.id) {
+            <a href="#" class="dm-item" (click)="$event.preventDefault()">
+              <span
+                class="avatar"
+                [class.avatar-1]="contact.avatarClass === 'avatar-1'"
+                [class.avatar-2]="contact.avatarClass === 'avatar-2'"
+                [class.avatar-3]="contact.avatarClass === 'avatar-3'"
+                [class.avatar-4]="contact.avatarClass === 'avatar-4'"
+              ></span>
+              <span class="dm-name">{{ contact.name }}</span>
+              @if (contact.isOnline) {
+                <span class="status online" aria-label="Online"></span>
+              }
+            </a>
+          }
         </nav>
       </section>
     </div>
@@ -80,19 +107,25 @@
   <section class="center-panel" aria-label="Hauptbereich">
     <div class="center-card">
       <header class="chat-header">
-        <button type="button" class="channel-title" aria-label="Channel-Details öffnen">
+        <button type="button" class="channel-title" aria-label="Channel-Details oeffnen">
           <span class="channel-icon"></span>
-          <span class="channel-name">Entwicklerteam</span>
+          <span class="channel-name">{{ database.activeChannel()?.name ?? 'Channel' }}</span>
           <span class="channel-arrow"></span>
         </button>
 
         <div class="members-area" aria-label="Mitglieder">
           <div class="members-preview">
-            <span class="member-avatar avatar-3"></span>
-            <span class="member-avatar avatar-2"></span>
-            <span class="member-avatar avatar-1"></span>
+            @for (member of database.activeChannelMembers().slice(0, 3); track member.id) {
+              <span
+                class="member-avatar"
+                [class.avatar-1]="member.avatarClass === 'avatar-1'"
+                [class.avatar-2]="member.avatarClass === 'avatar-2'"
+                [class.avatar-3]="member.avatarClass === 'avatar-3'"
+                [class.avatar-4]="member.avatarClass === 'avatar-4'"
+              ></span>
+            }
           </div>
-          <button type="button" class="add-members" aria-label="Mitglieder hinzufügen">
+          <button type="button" class="add-members" aria-label="Mitglieder hinzufuegen">
             <span class="icon icon-plus"></span>
           </button>
         </div>
@@ -104,51 +137,65 @@
           <span class="time-pill">Dienstag, 14 Januar</span>
         </div>
 
-        <article class="message message-right">
-          <div class="message-meta">
-            <span class="message-time">15:06 Uhr</span>
-            <span class="message-name">Frederik Beck</span>
-          </div>
-          <div class="speech-bubble">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque blandit odio efficitur lectus vestibulum, quis accumsan ante vulputate. Quisque tristique iaculis erat, eu faucibus lacus iaculis ac.</div>
-          <div class="reaction-bar">
-            <button type="button" class="reaction-chip" aria-label="Check-Reaktion">
-              <span class="reaction-icon reaction-check"></span>
-              <span>1</span>
-            </button>
-            <button type="button" class="reaction-chip reaction-add" aria-label="Reaktion hinzufügen">
-              <span class="icon icon-plus"></span>
-            </button>
-            <button type="button" class="reaction-chip reaction-comment" aria-label="Antworten">
-              <span class="reaction-dot"></span>
-            </button>
-            <button type="button" class="reaction-chip reaction-more" aria-label="Mehr">
-              <span class="reaction-more-dots"></span>
-            </button>
-          </div>
-        </article>
-
-        <article class="message message-left">
-          <div class="avatar message-avatar avatar-1"></div>
-          <div class="message-content">
-            <div class="message-meta">
-              <span class="message-name">Mia Hansen</span>
-              <span class="message-time">15:12 Uhr</span>
-            </div>
-            <div class="speech-bubble speech-bubble-left">Kurze Frage: Soll ich das Layout noch mehr wie im SVG ziehen oder lieber schon die Interaktion einbauen?</div>
-          </div>
-        </article>
+        @for (message of database.channelMessages(); track message.id) {
+          @if (database.isCurrentUser(message.authorId)) {
+            <article class="message message-right">
+              <div class="message-meta">
+                <span class="message-time">{{ database.formatTime(message.createdAt) }}</span>
+                <span class="message-name">{{ database.userName(message.authorId) }}</span>
+              </div>
+              <div class="speech-bubble">{{ message.body }}</div>
+              @if (message.reactions.length) {
+                <div class="reaction-bar">
+                  @for (reaction of message.reactions; track reaction.emoji) {
+                    <button type="button" class="reaction-chip" aria-label="Reaktion">
+                      <span class="reaction-icon reaction-check"></span>
+                      <span>{{ reaction.count }}</span>
+                    </button>
+                  }
+                  <button type="button" class="reaction-chip reaction-add" aria-label="Reaktion hinzufuegen">
+                    <span class="icon icon-plus"></span>
+                  </button>
+                </div>
+              }
+            </article>
+          } @else {
+            <article class="message message-left">
+              <span
+                class="avatar message-avatar"
+                [class.avatar-1]="database.avatarClass(message.authorId) === 'avatar-1'"
+                [class.avatar-2]="database.avatarClass(message.authorId) === 'avatar-2'"
+                [class.avatar-3]="database.avatarClass(message.authorId) === 'avatar-3'"
+                [class.avatar-4]="database.avatarClass(message.authorId) === 'avatar-4'"
+              ></span>
+              <div class="message-content">
+                <div class="message-meta">
+                  <span class="message-name">{{ database.userName(message.authorId) }}</span>
+                  <span class="message-time">{{ database.formatTime(message.createdAt) }}</span>
+                </div>
+                <div class="speech-bubble speech-bubble-left">{{ message.body }}</div>
+              </div>
+            </article>
+          }
+        }
       </div>
 
-      <form class="message-box" aria-label="Nachricht schreiben">
-        <label class="message-input-label" for="chat-message">Nachricht an #Entwicklerteam</label>
-        <textarea id="chat-message" class="message-input" rows="2" placeholder="Schreib eine Nachricht"></textarea>
+      <form
+        class="message-box"
+        aria-label="Nachricht schreiben"
+        (submit)="sendChannelMessage(chatMessage.value); chatMessage.value = ''; $event.preventDefault()"
+      >
+        <label class="message-input-label" for="chat-message">
+          Nachricht an #{{ database.activeChannel()?.name ?? 'Channel' }}
+        </label>
+        <textarea id="chat-message" #chatMessage class="message-input" rows="2"></textarea>
 
         <div class="message-actions">
           <div class="add-elements">
-            <button type="button" class="action-button" aria-label="Emoji hinzufügen">
+            <button type="button" class="action-button" aria-label="Emoji hinzufuegen">
               <span class="action-icon action-smile"></span>
             </button>
-            <button type="button" class="action-button" aria-label="Datei hinzufügen">
+            <button type="button" class="action-button" aria-label="Datei hinzufuegen">
               <span class="action-icon action-mail"></span>
             </button>
           </div>
@@ -161,7 +208,154 @@
     </div>
   </section>
 
-  <aside class="right-panel" aria-label="Rechter Bereich">
-    <img src="/assets/rechts.svg" alt="Rechter Bereich" class="panel-image" />
+  <aside class="right-panel" aria-label="Thread">
+    <div class="thread-card">
+      <header class="thread-header">
+        <div class="thread-title-group">
+          <span class="thread-title">Thread</span>
+          <span class="thread-tag-icon"></span>
+          <span class="thread-channel">{{ database.activeChannel()?.name ?? 'Channel' }}</span>
+        </div>
+
+        <button type="button" class="thread-close" aria-label="Thread schliessen">
+          <span class="thread-close-icon"></span>
+        </button>
+      </header>
+
+      <div class="thread-body">
+        @if (database.activeThreadOrigin(); as origin) {
+          <article class="thread-message thread-message-left thread-origin">
+            <span
+              class="thread-avatar"
+              [class.avatar-1]="database.avatarClass(origin.authorId) === 'avatar-1'"
+              [class.avatar-2]="database.avatarClass(origin.authorId) === 'avatar-2'"
+              [class.avatar-3]="database.avatarClass(origin.authorId) === 'avatar-3'"
+              [class.avatar-4]="database.avatarClass(origin.authorId) === 'avatar-4'"
+            ></span>
+            <div class="thread-content-block">
+              <div class="thread-message-meta">
+                <span class="thread-message-name">{{ database.userName(origin.authorId) }}</span>
+                <span class="thread-message-time">{{ database.formatTime(origin.createdAt) }}</span>
+              </div>
+              <p class="thread-bubble">{{ origin.body }}</p>
+            </div>
+          </article>
+        }
+
+        <div class="thread-separator">
+          <span>{{ database.threadMessages().length }} Antworten</span>
+          <span class="thread-separator-line"></span>
+        </div>
+
+        @for (reply of database.threadMessages(); track reply.id) {
+          @if (database.isCurrentUser(reply.authorId)) {
+            <article class="thread-message thread-message-right thread-reply-small">
+              <div class="thread-content-block thread-content-right">
+                <div class="thread-message-meta thread-message-meta-right">
+                  <span class="thread-message-time">{{ database.formatTime(reply.createdAt) }}</span>
+                  <span class="thread-message-name">{{ database.userName(reply.authorId) }}</span>
+                </div>
+                <p class="thread-bubble thread-bubble-own">{{ reply.body }}</p>
+              </div>
+              <span
+                class="thread-avatar"
+                [class.avatar-1]="database.avatarClass(reply.authorId) === 'avatar-1'"
+                [class.avatar-2]="database.avatarClass(reply.authorId) === 'avatar-2'"
+                [class.avatar-3]="database.avatarClass(reply.authorId) === 'avatar-3'"
+                [class.avatar-4]="database.avatarClass(reply.authorId) === 'avatar-4'"
+              ></span>
+            </article>
+          } @else {
+            <article class="thread-message thread-message-left thread-reply-large">
+              <span
+                class="thread-avatar"
+                [class.avatar-1]="database.avatarClass(reply.authorId) === 'avatar-1'"
+                [class.avatar-2]="database.avatarClass(reply.authorId) === 'avatar-2'"
+                [class.avatar-3]="database.avatarClass(reply.authorId) === 'avatar-3'"
+                [class.avatar-4]="database.avatarClass(reply.authorId) === 'avatar-4'"
+              ></span>
+              <div class="thread-content-block thread-content-wide">
+                <div class="thread-message-meta">
+                  <span class="thread-message-name">{{ database.userName(reply.authorId) }}</span>
+                  <span class="thread-message-time">{{ database.formatTime(reply.createdAt) }}</span>
+                </div>
+                <p class="thread-bubble thread-bubble-large">{{ reply.body }}</p>
+                @if (reply.reactions.length) {
+                  <div class="thread-reactions">
+                    @for (reaction of reply.reactions; track reaction.emoji) {
+                      <button type="button" class="thread-reaction-chip" aria-label="Reaktion">
+                        <span class="thread-emoji">+</span>
+                        <span>{{ reaction.count }}</span>
+                      </button>
+                    }
+                    <button type="button" class="thread-reaction-add" aria-label="Reaktion hinzufuegen">
+                      <span class="icon icon-plus"></span>
+                    </button>
+                  </div>
+                }
+              </div>
+            </article>
+          }
+        }
+      </div>
+
+      <form
+        class="thread-input-box"
+        aria-label="Antwort schreiben"
+        (submit)="sendThreadReply(threadMessage.value); threadMessage.value = ''; $event.preventDefault()"
+      >
+        <label class="thread-input-label" for="thread-message">Antworten...</label>
+        <textarea id="thread-message" #threadMessage class="thread-input" rows="2"></textarea>
+
+        <div class="thread-input-actions">
+          <div class="thread-input-left-actions">
+            <button type="button" class="action-button" aria-label="Emoji hinzufuegen">
+              <span class="action-icon action-smile"></span>
+            </button>
+            <button type="button" class="action-button" aria-label="Erwaehnung hinzufuegen">
+              <span class="action-icon action-mail"></span>
+            </button>
+          </div>
+
+          <button type="submit" class="send-button" aria-label="Senden">
+            <span class="send-icon"></span>
+          </button>
+        </div>
+      </form>
+    </div>
   </aside>
+
+  @if (profileDialogOpen) {
+    <div class="profile-modal-backdrop" (click)="closeProfileDialog()">
+      <section
+        class="profile-modal"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="'Profil von ' + (database.currentUser()?.name ?? 'Benutzer')"
+        (click)="$event.stopPropagation()"
+      >
+        <button
+          type="button"
+          class="profile-modal-close"
+          aria-label="Fenster schliessen"
+          (click)="closeProfileDialog()"
+        >
+          <span class="profile-modal-close-icon"></span>
+        </button>
+
+        <div class="profile-modal-avatar">
+          <div
+            class="profile-modal-avatar-image"
+            [style.backgroundImage]="profileAvatarBackgroundImage()"
+            [style.backgroundPosition]="profileAvatarBackgroundPosition()"
+            [style.backgroundSize]="profileAvatarBackgroundSize()"
+          ></div>
+        </div>
+
+        <h2 class="profile-modal-name">{{ database.currentUser()?.name ?? 'Profil' }}</h2>
+
+        <button type="button" class="profile-modal-edit" (click)="editProfile()">Bearbeiten</button>
+      </section>
+    </div>
+  }
 </main>

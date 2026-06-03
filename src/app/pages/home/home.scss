@@ -46,29 +46,243 @@
   border-radius: 35px;
   background: #fff;
   box-sizing: border-box;
-  padding: 0 50px;
+  padding: 0 90px 0 50px;
   font-family: Nunito, sans-serif;
   font-size: 24px;
   outline: none;
 }
 
-.profile-container {
+.searchbar-icon {
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.profile-area {
   position: absolute;
   left: 1544px;
   top: 0;
   width: 342px;
+  overflow: visible;
+  z-index: 20;
+}
+
+.profile-container {
+  position: relative;
+  width: 100%;
   height: 70px;
   border: 0;
-  padding: 0;
+  padding: 0 10px 0 0;
   background: transparent;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 35px;
+}
+
+.profile-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-family: Nunito, sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #000;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: auto;
+}
+
+.profile-arrow {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
 }
 
 .profile-image {
-  width: 100%;
-  height: 100%;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
   display: block;
+  flex: 0 0 auto;
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: 78px;
+  right: 0;
+  width: 220px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  background: #fff;
+  border-radius: 30px 0 30px 30px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.profile-dropdown-item {
+  width: 100%;
+  border: 0;
+  border-radius: 30px;
+  padding: 9px 15px;
+  background: transparent;
+  color: #000;
+  text-align: left;
+  font-family: Nunito, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, font-weight 0.2s ease;
+}
+
+.profile-dropdown-item:hover,
+.profile-dropdown-item:focus-visible {
+  background: #eceefe;
+  color: #444df2;
+  font-weight: 700;
+  outline: none;
+}
+
+.profile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(236, 238, 254, 0.76);
+  backdrop-filter: blur(2px);
+}
+
+.profile-modal {
+  position: relative;
+  width: 520px;
+  height: 620px;
+  box-sizing: border-box;
+  padding: 4px 10px 16px;
+  background: transparent;
+}
+
+.profile-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 30px;
+  background: #fff;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+}
+
+.profile-modal-close {
+  position: absolute;
+  top: 52px;
+  right: 28px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.profile-modal-close-icon {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.profile-modal-close-icon::before,
+.profile-modal-close-icon::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 11px;
+  width: 20px;
+  height: 2px;
+  border-radius: 2px;
+  background: #000;
+}
+
+.profile-modal-close-icon::before {
+  transform: rotate(45deg);
+}
+
+.profile-modal-close-icon::after {
+  transform: rotate(-45deg);
+}
+
+.profile-modal-avatar,
+.profile-modal-name,
+.profile-modal-edit {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-modal-avatar {
+  width: 200px;
+  height: 200px;
+  margin: 123px auto 0;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.profile-modal-avatar-image {
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.profile-modal-name {
+  margin: 20px 0 0;
+  font-family: Nunito, sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 44px;
+  color: #000;
+  text-align: center;
+}
+
+.profile-modal-edit {
+  margin: 58px auto 0;
+  min-width: 140px;
+  height: 49px;
+  padding: 12px 25px;
+  border: 2px solid #797ef3;
+  border-radius: 25px;
+  background: #fff;
+  color: #444df2;
+  font-family: Nunito, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.profile-modal-edit:hover,
+.profile-modal-edit:focus-visible {
+  background: #eceefe;
+  border-color: #444df2;
+  color: #444df2;
+  outline: none;
 }
 
 .left-panel,
@@ -390,7 +604,7 @@
   bottom: 185px;
   padding: 0 35px;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .time-separator {
@@ -635,6 +849,328 @@
   left: 1415px;
   width: 485px;
   height: 940px;
+}
+
+.thread-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 30px;
+  background: #fff;
+  overflow: hidden;
+  font-family: Nunito, sans-serif;
+}
+
+.thread-header {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 104px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 32px 40px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  z-index: 2;
+}
+
+.thread-title-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.thread-title {
+  font-size: 24px;
+  line-height: 33px;
+  font-weight: 700;
+  color: #000;
+}
+
+.thread-tag-icon {
+  width: 16px;
+  height: 16px;
+  position: relative;
+}
+
+.thread-tag-icon::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 2px solid #797ef3;
+  border-radius: 4px;
+  transform: rotate(45deg);
+}
+
+.thread-channel {
+  font-size: 14px;
+  line-height: 19px;
+  color: #797ef3;
+}
+
+.thread-close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.thread-close-icon {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.thread-close-icon::before,
+.thread-close-icon::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 11px;
+  height: 2px;
+  border-radius: 2px;
+  background: #000;
+}
+
+.thread-close-icon::before {
+  transform: rotate(45deg);
+}
+
+.thread-close-icon::after {
+  transform: rotate(-45deg);
+}
+
+.thread-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 104px;
+  bottom: 205px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 20px 0 10px;
+}
+
+.thread-message {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  flex: 0 0 auto;
+}
+
+.thread-origin {
+  width: 100%;
+  min-height: 133px;
+  padding: 10px 0 10px 40px;
+}
+
+.thread-reply-large {
+  width: 100%;
+  min-height: 250px;
+  padding: 10px 40px;
+}
+
+.thread-reply-small {
+  width: 100%;
+  min-height: 150px;
+  justify-content: flex-end;
+  padding: 10px 40px 10px 0;
+}
+
+.thread-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #fff;
+  flex: 0 0 auto;
+}
+
+.thread-content-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 278px;
+}
+
+.thread-content-wide {
+  width: 315px;
+}
+
+.thread-content-right {
+  width: 198px;
+  align-items: flex-end;
+}
+
+.thread-message-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: 25px;
+}
+
+.thread-message-meta-right {
+  justify-content: flex-end;
+}
+
+.thread-message-name {
+  font-size: 18px;
+  line-height: 25px;
+  font-weight: 700;
+  color: #000;
+}
+
+.thread-message-time {
+  font-size: 14px;
+  line-height: 19px;
+  color: #686868;
+}
+
+.thread-bubble {
+  width: 278px;
+  min-height: 80px;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 15px;
+  border-radius: 0 20px 20px 20px;
+  background: #eceefe;
+  color: #000;
+  font-size: 18px;
+  line-height: 25px;
+}
+
+.thread-bubble-large {
+  width: 315px;
+  min-height: 155px;
+}
+
+.thread-bubble-own {
+  width: 130px;
+  min-height: 55px;
+  border-radius: 20px 0 20px 20px;
+  background: #797ef3;
+  color: #fff;
+}
+
+.thread-separator {
+  position: relative;
+  width: auto;
+  height: 25px;
+  margin: 0 33px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: #adb0d9;
+  font-size: 18px;
+  line-height: 25px;
+}
+
+.thread-separator-line {
+  height: 0;
+  border-top: 1px solid #adb0d9;
+  flex: 1;
+}
+
+.thread-reactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thread-reaction-chip,
+.thread-reaction-add {
+  height: 34px;
+  box-sizing: border-box;
+  border: 1px solid #adb0d9;
+  border-radius: 20px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.thread-reaction-chip {
+  gap: 8px;
+  padding: 5px 10px;
+  min-width: 64px;
+  color: #000;
+  font-size: 16px;
+}
+
+.thread-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.thread-reaction-add {
+  width: 34px;
+  padding: 5px;
+}
+
+.thread-input-box {
+  position: absolute;
+  left: 20px;
+  bottom: 40px;
+  width: 445px;
+  height: 145px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 24px;
+  padding: 20px;
+  border: 1px solid #adb0d9;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.thread-input-label {
+  font-size: 18px;
+  line-height: 25px;
+  color: #686868;
+}
+
+.thread-input {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  resize: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 18px;
+  color: #000;
+}
+
+.thread-input-actions {
+  position: relative;
+  z-index: 1;
+  width: 405px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.thread-input-left-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .panel-image {

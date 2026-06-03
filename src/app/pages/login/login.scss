@@ -6,17 +6,65 @@
     $error-pink: #ED1E79;
     $text-gray: #686868;
 
+    :host {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
     .login-wrapper {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
-      min-height: 100vh;
-      background-color: #f1f5f9;
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      padding: 0;
       box-sizing: border-box;
 
       * {
         box-sizing: border-box;
+      }
+    }
+
+    .auth-account-group {
+      position: absolute;
+      left: 1686px;
+      top: 75px;
+      width: 169px;
+      height: 77px;
+      z-index: 3;
+      pointer-events: none;
+
+      img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    }
+
+    .auth-create-account-link {
+      position: absolute;
+      left: 1702px;
+      top: 110px;
+      width: 152px;
+      height: 42px;
+      display: block;
+      border: 2px solid transparent;
+      padding: 0;
+      background: transparent;
+      border-radius: 25px;
+      cursor: pointer;
+      z-index: 4;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+
+      &:hover,
+      &:focus-visible {
+        background: rgba($light-purple-bg, 0.3);
+        border-color: $purple-1;
+        outline: none;
       }
     }
 
@@ -142,13 +190,13 @@
       border: 2px solid transparent;
       transition: border-color 0.2s ease, background-color 0.2s ease;
 
+      &:hover {
+        border-color: #000000;
+      }
+
       &:focus-within {
         border-color: $purple-1;
         background-color: lighten($light-purple-bg, 2%);
-      }
-
-      &.has-error {
-        border-color: $error-pink;
       }
 
       .input-icon {
@@ -218,6 +266,8 @@
       background: none;
       border: none;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
       font-family: 'Figtree', sans-serif;
       font-style: normal;
       font-weight: 400;
@@ -225,11 +275,15 @@
       line-height: 120%;
       color: $purple-2;
       padding: 5px 15px;
-      transition: color 0.2s ease;
+      border-radius: 30px;
+      text-decoration: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
 
-      &:hover {
+      &:hover,
+      &:focus-visible {
+        background-color: $light-purple-bg;
         color: $purple-1;
-        text-decoration: underline;
+        outline: none;
       }
     }
 
@@ -290,9 +344,11 @@
       line-height: 120%;
       color: $purple-1;
 
-      &:hover {
-        background: darken($light-purple-bg, 3%);
-        border-color: rgba($purple-1, 0.2);
+      &:hover,
+      &:focus-visible {
+        background: $light-purple-bg;
+        border-color: $purple-1;
+        outline: none;
       }
 
       &:active {
@@ -343,7 +399,7 @@
         box-shadow: 0 4px 10px rgba($purple-1, 0.2);
 
         &:hover {
-          background: darken($purple-1, 8%);
+          background: lighten($purple-1, 8%);
         }
 
         &:active {
@@ -374,10 +430,12 @@
         font-size: 18px;
         line-height: 25px;
         color: $purple-1;
+        white-space: nowrap;
 
         &:hover {
-          background: rgba($light-purple-bg, 0.3);
+          background: $purple-1;
           border-color: $purple-1;
+          color: #FFFFFF;
         }
 
         &:active {

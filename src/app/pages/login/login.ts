@@ -1,18 +1,21 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+import { MockDatabaseService } from '../../core/database/mock-database.service';
 
 @Component({
   selector: 'app-login',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
 export class Login {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly database = inject(MockDatabaseService);
 
   protected readonly loginForm = new FormGroup({
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -43,17 +46,21 @@ export class Login {
   protected onSubmit(): void {
     this.loginForm.markAllAsTouched();
     if (this.loginForm.invalid) {
-      this.toastMessage.set('Bitte die Felder korrekt ausfüllen.');
+      this.toastMessage.set('Bitte die Felder korrekt ausfuellen.');
       this.showToast.set(true);
       return;
     }
 
-    this.toastMessage.set('Login wurde ausgelöst.');
-    this.showToast.set(true);
-  }
+    const { email, password } = this.loginForm.getRawValue();
+    const result = this.database.login(email, password);
 
-  protected forgotPassword(): void {
-    this.router.navigate(['/reset']);
+    if (!result.ok) {
+      this.toastMessage.set(result.message);
+      this.showToast.set(true);
+      return;
+    }
+
+    this.router.navigate(['/home']);
   }
 
   protected loginWithGoogle(): void {
@@ -62,7 +69,7 @@ export class Login {
   }
 
   protected loginAsGuest(): void {
-    this.toastMessage.set('Gast-Login ist noch nicht verbunden.');
-    this.showToast.set(true);
+    this.database.loginAsGuest();
+    this.router.navigate(['/home']);
   }
 }

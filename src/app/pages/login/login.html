@@ -1,4 +1,10 @@
     <div class="login-wrapper">
+      <div class="auth-account-group" aria-hidden="true">
+        <img src="assets/auth-account-group.svg" alt="" />
+      </div>
+
+      <a class="auth-create-account-link" routerLink="/signup" aria-label="Konto erstellen"></a>
+
       <div class="login-container">
         
         <div class="success-toast" [class.show]="showToast()">
@@ -21,9 +27,7 @@
             <div class="input-group">
               <div class="input-wrapper" [class.has-error]="isFieldInvalid('email')">
 
-                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
+                <img class="input-icon" src="assets/mail.svg" alt="" />
                 <input 
                   type="email" 
                   formControlName="email" 
@@ -41,9 +45,7 @@
             <div class="input-group">
               <div class="input-wrapper" [class.has-error]="isFieldInvalid('password')">
              
-                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+                <img class="input-icon" src="assets/lock.svg" alt="" />
                 <input 
                   [type]="showPassword() ? 'text' : 'password'" 
                   formControlName="password" 
@@ -72,9 +74,9 @@
 
             
             <div class="forgot-password-container">
-              <button type="button" class="btn-forgot-password" (click)="forgotPassword()">
+              <a class="btn-forgot-password" routerLink="/reset">
                 Passwort vergessen?
-              </button>
+              </a>
             </div>
           </form>
 
@@ -88,9 +90,7 @@
           <div class="google-container">
             <button type="button" class="btn-google" (click)="loginWithGoogle()">
            
-              <svg class="google-icon" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.245-3.125C18.465 1.926 15.56 1 12.24 1 6.13 1 1.13 5.923 1.13 12s5 11 11.11 11c6.38 0 10.62-4.413 10.62-10.635 0-.715-.075-1.26-.17-1.68H12.24z"/>
-              </svg>
+              <img class="google-icon" src="assets/google.svg" alt="" />
               <span>Anmelden mit Google</span>
             </button>
           </div>
