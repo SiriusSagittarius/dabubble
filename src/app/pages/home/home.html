@@ -65,7 +65,11 @@
 
       <section class="sidebar-section">
         <div class="channels-header-row" aria-label="Channels">
-          <img src="/assets/channels-header.svg" alt="" class="channels-header-image" />
+          <img
+            [src]="channelsExpanded() ? '/assets/uc.svg' : '/assets/rc.svg'"
+            alt=""
+            class="channels-header-image"
+          />
           <button
             type="button"
             class="channels-toggle-hit"
@@ -105,25 +109,13 @@
             <button
               type="button"
               class="channel-item channel-item-add"
-              aria-label="Channel hinzufuegen"
+              aria-label="Channel hinzufügen"
               (click)="openAddChannelDialog()"
             >
               <span class="channel-item-add-icon-circle" aria-hidden="true">
-                <svg
-                  class="channel-item-add-icon"
-                  viewBox="0 0 24 24"
-                  focusable="false"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M12 5V19M5 12H19"
-                    stroke="currentColor"
-                    stroke-width="2.2"
-                    stroke-linecap="round"
-                  />
-                </svg>
+                <span class="channel-item-add-plus"></span>
               </span>
-              <span>Channel hinzufÃ¼gen</span>
+              <span>Channel hinzufügen</span>
             </button>
           </nav>
         }
@@ -223,14 +215,14 @@
           <div class="members-preview-wrap">
             <img src="/assets/members-preview-hover.svg" alt="" class="members-preview-hover" />
             <div class="members-preview">
-            <button
-              type="button"
-              class="members-preview-button"
-              aria-label="Mitglieder anzeigen"
-              (click)="openMembersPanel()"
-            >
-              <img src="/assets/members-preview.svg" alt="" class="members-preview-image" />
-            </button>
+              <button
+                type="button"
+                class="members-preview-button"
+                aria-label="Mitglieder anzeigen"
+                (click)="openMembersPanel()"
+              >
+                <img src="/assets/members-preview.svg" alt="" class="members-preview-image" />
+              </button>
             </div>
             <button
               type="button"
@@ -247,7 +239,7 @@
             aria-label="Mitglieder hinzufügen"
             (click)="openAddMembersPanel()"
           >
-            <img src="/assets/add-members-button.svg" alt="" class="members-icon" />
+            <img src="/assets/person_add.svg" alt="hinzufügen" class="members-icon" />
           </button>
         </div>
       </header>
@@ -393,8 +385,10 @@
                   class="add-members-panel-input"
                   placeholder="Name eingeben"
                   [(ngModel)]="addMembersName"
+                  (focus)="showAddMembersSuggestions.set(true)"
+                  (blur)="hideSuggestionsWithDelay()"
                 />
-                @if (addMembersName.trim().length > 0 && addMembersSuggestions().length > 0) {
+                @if (showAddMembersSuggestions() && addMembersSuggestions().length > 0) {
                   <div class="add-members-suggestions-list">
                     @for (user of addMembersSuggestions(); track user.id) {
                       <button
@@ -424,12 +418,14 @@
       }
 
       <div class="chat-body">
-        <div class="time-separator">
-          <span class="time-line"></span>
-          <span class="time-pill">Dienstag, 14 Januar</span>
-        </div>
+        @for (message of database.channelMessages(); track message.id; let index = $index) {
+          @if (shouldShowDateSeparator(index)) {
+            <div class="time-separator" [class.time-separator-first]="index === 0">
+              <span class="time-line"></span>
+              <span class="time-pill">{{ formatDateSeparator(message.createdAt) }}</span>
+            </div>
+          }
 
-        @for (message of database.channelMessages(); track message.id) {
           @if (database.isCurrentUser(message.authorId)) {
             <article class="message message-right">
               <div class="message-meta">
@@ -655,7 +651,13 @@
           </section>
         </section>
 
-        <button type="button" class="channel-edition-leave-button">Channel verlassen</button>
+        <button
+          type="button"
+          class="channel-edition-leave-button"
+          (click)="handleChannelEditionAction()"
+        >
+          {{ channelEditionActionLabel() }}
+        </button>
       </section>
     </div>
   }
@@ -919,10 +921,163 @@
     <div class="add-channel-backdrop" (click)="closeAddChannelDialog()">
       <section
         class="add-channel-dialog"
+        [class.add-channel-members-dialog]="addChannelMembersStep"
         (click)="$event.stopPropagation()"
-        aria-label="Channel hinzufuegen"
+        [attr.aria-label]="addChannelMembersStep ? 'Leute hinzufügen' : 'Channel erstellen'"
       >
-        <img src="/assets/add-channel-dialog.svg" alt="" class="add-channel-dialog-image" />
+        <header class="add-channel-dialog-header">
+          <h2 class="add-channel-dialog-title">
+            {{ addChannelMembersStep ? 'Leute hinzufügen' : 'Channel erstellen' }}
+          </h2>
+          <button
+            type="button"
+            class="add-channel-dialog-close"
+            aria-label="Channel Dialog schliessen"
+            (click)="closeAddChannelDialog()"
+          >
+            x
+          </button>
+        </header>
+
+        @if (!addChannelMembersStep) {
+          <form
+            class="add-channel-form"
+            novalidate
+            (submit)="createAddChannel(); $event.preventDefault()"
+          >
+            <p class="add-channel-dialog-copy">
+              Channels dienen deinem Team zur Kommunikation. Am besten sollten sie themenbezogen
+              sein, zum Beispiel <span>#marketing</span>.
+            </p>
+
+            <label class="add-channel-label" for="add-channel-name">Channel-Name</label>
+            <div class="add-channel-field add-channel-name-field">
+              <span class="add-channel-hash" aria-hidden="true">#</span>
+              <input
+                id="add-channel-name"
+                name="addChannelName"
+                type="text"
+                class="add-channel-input add-channel-input-with-icon"
+                placeholder="z. B. Kooperationsprojekte"
+                [(ngModel)]="addChannelNameDraft"
+              />
+            </div>
+
+            <label
+              class="add-channel-label add-channel-description-label"
+              for="add-channel-description"
+            >
+              Beschreibung <span>(optional)</span>
+            </label>
+            <div class="add-channel-field">
+              <input
+                id="add-channel-description"
+                name="addChannelDescription"
+                type="text"
+                class="add-channel-input"
+                placeholder="Dein Text hier"
+                [(ngModel)]="addChannelDescriptionDraft"
+              />
+            </div>
+
+            <div class="add-channel-actions">
+              <button
+                type="submit"
+                class="add-channel-submit"
+                [disabled]="!addChannelNameDraft.trim()"
+              >
+                Erstellen
+              </button>
+            </div>
+          </form>
+        } @else {
+          <form
+            class="add-channel-members-form"
+            novalidate
+            (submit)="finishAddChannelMembers(); $event.preventDefault()"
+          >
+            <label class="add-channel-member-option">
+              <input
+                type="radio"
+                name="addChannelMemberMode"
+                value="all"
+                [(ngModel)]="addChannelMemberMode"
+              />
+              <span>Alle Mitglieder von Devspace hinzufügen</span>
+            </label>
+
+            <label class="add-channel-member-option">
+              <input
+                type="radio"
+                name="addChannelMemberMode"
+                value="selected"
+                [(ngModel)]="addChannelMemberMode"
+              />
+              <span>Bestimmte Leute hinzufügen</span>
+            </label>
+
+            @if (addChannelMemberMode === 'selected') {
+              <div class="add-members-input-wrap">
+                @for (member of selectedAddMembers(); track member.id) {
+                  <div class="add-members-selected-chip">
+                    <img
+                      [src]="avatarSvgPath(member.id)"
+                      alt=""
+                      class="add-members-selected-avatar"
+                    />
+                    <span class="add-members-selected-name">{{ member.name }}</span>
+                    <button
+                      type="button"
+                      class="add-members-selected-remove"
+                      aria-label="Entfernen"
+                      (click)="removeSelectedMember(member.id)"
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="black"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                      >
+                        <line x1="2" y1="2" x2="10" y2="10"></line>
+                        <line x1="10" y1="2" x2="2" y2="10"></line>
+                      </svg>
+                    </button>
+                  </div>
+                }
+                <input
+                  type="text"
+                  name="memberSearch"
+                  class="add-members-panel-input"
+                  placeholder="Name eingeben"
+                  [(ngModel)]="addMembersName"
+                  (focus)="showAddMembersSuggestions.set(true)"
+                  (blur)="hideSuggestionsWithDelay()"
+                />
+                @if (showAddMembersSuggestions() && addMembersSuggestions().length > 0) {
+                  <div class="add-members-suggestions-list">
+                    @for (user of addMembersSuggestions(); track user.id) {
+                      <button
+                        type="button"
+                        class="suggestion-item"
+                        (click)="selectSuggestedMember(user.id)"
+                      >
+                        <img [src]="avatarSvgPath(user.id)" alt="" class="suggestion-avatar" />
+                        <span class="suggestion-name">{{ user.name }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="add-channel-actions add-channel-members-actions">
+              <button type="submit" class="add-channel-submit">Erstellen</button>
+            </div>
+          </form>
+        }
       </section>
     </div>
   }

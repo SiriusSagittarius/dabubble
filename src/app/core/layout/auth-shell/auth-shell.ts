@@ -1,5 +1,5 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { RouterLink, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-auth-shell',
@@ -9,8 +9,6 @@ import { Router, RouterLink, RouterOutlet } from '@angular/router';
   styleUrl: './auth-shell.scss',
 })
 export class AuthShell implements OnInit, OnDestroy {
-  private readonly router = inject(Router);
-
   protected introVisible = false;
   protected introLeaving = false;
 
@@ -35,19 +33,7 @@ export class AuthShell implements OnInit, OnDestroy {
   }
 
   private shouldPlayIntro(): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return false;
-    }
-
-    if (window.sessionStorage.getItem('dabubble.auth-intro-seen') === 'true') {
-      return false;
-    }
-
-    return this.router.url.startsWith('/login');
+    return false;
   }
 
   private startIntro(): void {
@@ -59,15 +45,14 @@ export class AuthShell implements OnInit, OnDestroy {
     this.introTimers.push(
       setTimeout(() => {
         this.introLeaving = true;
-      }, 1650),
+      }, 2850),
     );
 
     this.introTimers.push(
       setTimeout(() => {
         this.introVisible = false;
         this.introLeaving = false;
-        window.sessionStorage.setItem('dabubble.auth-intro-seen', 'true');
-      }, 2050),
+      }, 3250),
     );
   }
 

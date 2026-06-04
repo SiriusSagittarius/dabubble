@@ -13,10 +13,12 @@ import { MockDatabaseService } from '../../core/database/mock-database.service';
   styleUrl: './login.scss',
 })
 export class Login {
+[x: string]: any;
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly database = inject(MockDatabaseService);
   private loginSuccessTimer: ReturnType<typeof setTimeout> | null = null;
+  private introTimers: ReturnType<typeof setTimeout>[] = [];
 
   protected readonly loginForm = new FormGroup({
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -27,6 +29,8 @@ export class Login {
   protected readonly showToast = signal(false);
   protected readonly toastMessage = signal('');
   protected readonly showSuccessOverlay = signal(false);
+  protected readonly showIntro = signal(true);
+  protected readonly introLeaving = signal(false);
 
   constructor() {
     this.loginForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
@@ -35,8 +39,11 @@ export class Login {
       }
     });
 
+    this.startIntro();
+
     this.destroyRef.onDestroy(() => {
       this.clearLoginSuccessTimer();
+      this.clearIntroTimers();
     });
   }
 
@@ -91,5 +98,29 @@ export class Login {
       clearTimeout(this.loginSuccessTimer);
       this.loginSuccessTimer = null;
     }
+  }
+
+  private startIntro(): void {
+    this.clearIntroTimers();
+    this.showIntro.set(true);
+    this.introLeaving.set(false);
+
+    this.introTimers.push(
+      setTimeout(() => {
+        this.introLeaving.set(true);
+      }, 3050),
+      setTimeout(() => {
+        this.showIntro.set(false);
+        this.introLeaving.set(false);
+      }, 3450),
+    );
+  }
+
+  private clearIntroTimers(): void {
+    for (const timer of this.introTimers) {
+      clearTimeout(timer);
+    }
+
+    this.introTimers = [];
   }
 }

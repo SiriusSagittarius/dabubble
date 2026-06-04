@@ -26,9 +26,9 @@ $light-purple-bg: #ECEEFE;
   inset: 0;
   z-index: 40;
   overflow: hidden;
-  background: #313ae6 url('/assets/00-Intro.svg') center / cover no-repeat;
+  background: linear-gradient(180deg, #797ef3 0%, #313ae6 100%);
   opacity: 1;
-  transition: opacity 340ms ease;
+  transition: opacity 380ms ease;
   pointer-events: auto;
 }
 
@@ -36,16 +36,55 @@ $light-purple-bg: #ECEEFE;
   opacity: 0;
 }
 
-.auth-intro-logo {
+.auth-intro-brand {
   position: absolute;
-  left: calc(50% - 696px / 2 + 51px);
-  top: calc(50% - 184px / 2);
-  width: 696px;
-  height: 184px;
-  opacity: 0;
-  object-fit: contain;
-  animation: introLogoTravel 1.45s cubic-bezier(0.2, 0.86, 0.18, 1) 120ms both;
-  will-change: left, top, width, height, opacity;
+  left: 50%;
+  top: 50%;
+  width: 240px;
+  height: 236px;
+  transform: translate(-50%, -50%);
+  transform-origin: left top;
+  animation: introBrandTravel 3.05s cubic-bezier(0.2, 0.86, 0.18, 1) both;
+  will-change: left, top, transform;
+}
+
+.auth-intro-mark {
+  width: 240px;
+  height: 236px;
+  overflow: hidden;
+
+  img {
+    display: block;
+    width: 892px;
+    height: 236px;
+    max-width: none;
+    transform: translateX(-267px);
+  }
+}
+
+.auth-intro-word {
+  position: absolute;
+  left: 282px;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  transform: translateY(-50%);
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 104px;
+  font-weight: 700;
+  letter-spacing: -2.8px;
+  line-height: 1;
+  white-space: nowrap;
+
+  span {
+    opacity: 0;
+    transform: translateX(-24px);
+    animation: introLetterReveal 420ms cubic-bezier(0.22, 0.94, 0.28, 1) both;
+    animation-delay: calc(860ms + var(--letter-index) * 72ms);
+    will-change: opacity, transform;
+  }
 }
 
 .auth-logo {
@@ -56,6 +95,10 @@ $light-purple-bg: #ECEEFE;
   height: 70px;
   object-fit: contain;
   z-index: 3;
+}
+
+.auth-logo--intro-active {
+  opacity: 0;
 }
 
 .auth-footer-links {
@@ -98,28 +141,46 @@ $light-purple-bg: #ECEEFE;
   height: 100%;
 }
 
-@keyframes introLogoTravel {
+@keyframes introBrandTravel {
   0% {
-    left: calc(50% - 696px / 2 + 51px);
-    top: calc(50% - 184px / 2);
-    width: 696px;
-    height: 184px;
-    opacity: 0;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1);
   }
 
-  10% {
-    opacity: 1;
+  18% {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1);
   }
 
-  82% {
-    opacity: 1;
+  38% {
+    left: 50%;
+    top: 50%;
+    transform: translate(calc(-50% - 126px), -50%) scale(1);
+  }
+
+  68% {
+    left: 50%;
+    top: 50%;
+    transform: translate(calc(-50% - 126px), -50%) scale(1);
   }
 
   100% {
     left: 75px;
     top: 75px;
-    width: 242.11px;
-    height: 70px;
+    transform: translate(0, 0) scale(0.292);
+  }
+}
+
+@keyframes introLetterReveal {
+  0% {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+
+  100% {
     opacity: 1;
+    transform: translateX(0);
   }
 }

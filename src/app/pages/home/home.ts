@@ -25,6 +25,12 @@ export class Home {
   protected channelNameDraft = '';
   protected channelDescriptionDraft = '';
   protected addMembersName = '';
+  protected addChannelNameDraft = '';
+  protected addChannelDescriptionDraft = '';
+  protected addChannelMembersStep = false;
+  protected addChannelMemberMode: 'all' | 'selected' = 'all';
+  protected readonly showAddMembersSuggestions = signal(false);
+  protected pendingAddChannelId: string | null = null;
   protected chatMessageDraft = '';
   protected readonly selectedAddMemberIds = signal<string[]>([]);
   protected readonly membersPanelOpen = signal(false);
@@ -33,7 +39,7 @@ export class Home {
   protected readonly threadCollapsed = signal(false);
   protected readonly channelEditionOpen = signal(false);
   protected readonly channelsExpanded = signal(true);
-  protected readonly directMessagesExpanded = signal(true);
+  protected readonly directMessagesExpanded = signal(false);
   protected readonly addChannelDialogOpen = signal(false);
 
   @ViewChild('profileArea', { read: ElementRef })
@@ -53,12 +59,59 @@ export class Home {
     this.database.sendThreadReply(body);
   }
 
+  protected shouldShowDateSeparator(index: number): boolean {
+    const messages = this.database.channelMessages();
+    const message = messages[index];
+
+    if (!message) {
+      return false;
+    }
+
+    if (index === 0) {
+      return true;
+    }
+
+    const previousMessage = messages[index - 1];
+    return this.dateKey(message.createdAt) !== this.dateKey(previousMessage.createdAt);
+  }
+
+  protected formatDateSeparator(date: string): string {
+    const value = new Date(date);
+    const weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+    const months = [
+      'Januar',
+      'Februar',
+      'Maerz',
+      'April',
+      'Mai',
+      'Juni',
+      'Juli',
+      'August',
+      'September',
+      'Oktober',
+      'November',
+      'Dezember',
+    ];
+
+    return `${weekdays[value.getDay()]}, ${value.getDate()} ${months[value.getMonth()]}`;
+  }
+
   protected toggleChannels(): void {
-    this.channelsExpanded.update((value) => !value);
+    const nextExpanded = !this.channelsExpanded();
+
+    this.channelsExpanded.set(nextExpanded);
+    if (nextExpanded) {
+      this.directMessagesExpanded.set(false);
+    }
   }
 
   protected toggleDirectMessages(): void {
-    this.directMessagesExpanded.update((value) => !value);
+    const nextExpanded = !this.directMessagesExpanded();
+
+    this.directMessagesExpanded.set(nextExpanded);
+    if (nextExpanded) {
+      this.channelsExpanded.set(false);
+    }
   }
 
   protected openMembersPanel(): void {
@@ -120,7 +173,56 @@ export class Home {
   }
 
   protected openAddChannelDialog(): void {
+    this.addChannelNameDraft = '';
+    this.addChannelDescriptionDraft = '';
+    this.addChannelMembersStep = false;
+    this.addChannelMemberMode = 'all';
+    this.pendingAddChannelId = null;
     this.addChannelDialogOpen.set(true);
+  }
+
+  protected createAddChannel(): void {
+    const name = this.addChannelNameDraft.trim();
+
+    if (!name) {
+      return;
+    }
+
+    const channel = this.database.createChannel(name);
+
+    if (channel && this.addChannelDescriptionDraft.trim()) {
+      this.database.updateChannel(channel.id, {
+        description: this.addChannelDescriptionDraft.trim(),
+      });
+    }
+
+    if (channel) {
+      this.pendingAddChannelId = channel.id;
+      this.addChannelMembersStep = true;
+    }
+  }
+
+  protected finishAddChannelMembers(): void {
+    const channelId = this.pendingAddChannelId;
+
+    if (!channelId) {
+      this.closeAddChannelDialog();
+      return;
+    }
+
+    if (this.addChannelMemberMode === 'all') {
+      this.database.addMembersToChannel(
+        channelId,
+        this.database.users().map((user) => user.id),
+      );
+    } else if (this.addChannelMemberMode === 'selected') {
+      const selectedIds = this.selectedAddMemberIds();
+      if (selectedIds.length > 0) {
+        this.database.addMembersToChannel(channelId, selectedIds);
+      }
+    }
+
+    this.closeAddChannelDialog();
   }
 
   protected editChannelName(): void {
@@ -163,19 +265,69 @@ export class Home {
     this.channelDescriptionEditMode = false;
   }
 
-  protected addMembersSuggestions() {
-    const query = this.addMembersName.trim().toLowerCase();
-    if (!query) {
-      return [];
+  protected isActiveChannelCreator(): boolean {
+    const channel = this.database.activeChannel();
+    const currentUser = this.database.currentUser();
+
+    return !!channel && !!currentUser && channel.createdBy === currentUser.id;
+  }
+
+  protected isActiveChannelMember(): boolean {
+    const channel = this.database.activeChannel();
+    const currentUser = this.database.currentUser();
+
+    return !!channel && !!currentUser && channel.memberIds.includes(currentUser.id);
+  }
+
+  protected channelEditionActionLabel(): string {
+    if (!this.isActiveChannelMember()) {
+      return 'Channel beitreten';
     }
 
+    return this.isActiveChannelCreator() ? 'Channel löschen' : 'Channel verlassen';
+  }
+
+  protected handleChannelEditionAction(): void {
+    const channel = this.database.activeChannel();
+
+    if (!channel) {
+      return;
+    }
+
+    if (!this.isActiveChannelMember()) {
+      this.database.joinChannel(channel.id);
+    } else if (this.isActiveChannelCreator()) {
+      this.database.deleteChannel(channel.id);
+    } else {
+      this.database.leaveChannel(channel.id);
+    }
+
+    this.closeChannelEdition();
+  }
+
+  protected addMembersSuggestions() {
+    const query = this.addMembersName.trim().toLowerCase();
+
     const selectedIds = this.selectedAddMemberIds();
-    return this.database.users().filter((user) => {
+    const channelId = this.addChannelMembersStep ? this.pendingAddChannelId : this.database.activeChannel()?.id;
+    const channel = channelId ? this.database.channels().find((c) => c.id === channelId) : null;
+    const activeMemberIds = channel?.memberIds ?? [];
+
+    const filtered = this.database.users().filter((user) => {
       if (selectedIds.includes(user.id)) return false;
-      const name = user.name.toLowerCase();
-      const email = user.email.toLowerCase();
-      return name.includes(query) || email.includes(query);
+      if (activeMemberIds.includes(user.id)) return false;
+
+      if (!query) return true; // Zeige alle verfügbaren Nutzer, wenn noch nichts getippt wurde
+
+      return user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
     });
+
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  protected hideSuggestionsWithDelay(): void {
+    // Kleiner Delay, damit der Click-Event auf einen Vorschlag noch gefeuert wird
+    setTimeout(() => this.showAddMembersSuggestions.set(false), 200);
   }
 
   protected selectSuggestedMember(userId: string): void {
@@ -189,6 +341,11 @@ export class Home {
   protected addMembersToChannel(): void {
     const selectedIds = this.selectedAddMemberIds();
     if (selectedIds.length === 0) return;
+
+    const channel = this.database.activeChannel();
+    if (!channel) return;
+
+    this.database.addMembersToChannel(channel.id, selectedIds);
 
     console.log('Mitglieder zum Channel hinzufügen:', selectedIds);
     this.closeAddMembersPanel();
@@ -318,6 +475,11 @@ export class Home {
 
   protected closeAddChannelDialog(): void {
     this.addChannelDialogOpen.set(false);
+    this.addChannelNameDraft = '';
+    this.addChannelDescriptionDraft = '';
+    this.addChannelMembersStep = false;
+    this.addChannelMemberMode = 'all';
+    this.pendingAddChannelId = null;
   }
 
   protected toggleProfileMenu(): void {
@@ -541,6 +703,15 @@ export class Home {
     return `${472 * scale}px ${167 * scale}px`;
   }
 
+  private dateKey(date: string): string {
+    const value = new Date(date);
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
   @HostListener('document:click', ['$event'])
   protected closeProfileMenuOnOutsideClick(event: MouseEvent): void {
     if (!this.profileMenuOpen) {
@@ -560,6 +731,6 @@ export class Home {
     this.profileMenuOpen = false;
     this.profileDialogOpen = false;
     this.profileEditMode = false;
-    this.addChannelDialogOpen.set(false);
+    this.closeAddChannelDialog();
   }
 }

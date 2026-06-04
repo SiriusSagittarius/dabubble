@@ -233,11 +233,14 @@ export class MockDatabaseService {
   }
 
   selectChannel(channelId: string): void {
-    if (!this.state().channels.some((channel) => channel.id === channelId)) {
+    const state = this.state();
+    const channel = state.channels.find((entry) => entry.id === channelId);
+
+    if (!channel) {
       return;
     }
 
-    const threadId = this.state().threads.find((thread) => thread.channelId === channelId)?.id ?? '';
+    const threadId = state.threads.find((thread) => thread.channelId === channelId)?.id ?? '';
     this.patchState((state) => ({ ...state, selectedChannelId: channelId, selectedThreadId: threadId }));
   }
 
@@ -272,6 +275,87 @@ export class MockDatabaseService {
     }));
 
     return channel;
+  }
+
+  addMembersToChannel(channelId: string, memberIds: string[]): MockChannel | null {
+    const currentChannel = this.state().channels.find((channel) => channel.id === channelId);
+
+    if (!currentChannel || memberIds.length === 0) {
+      return currentChannel ?? null;
+    }
+
+    const nextChannel: MockChannel = {
+      ...currentChannel,
+      memberIds: Array.from(new Set([...currentChannel.memberIds, ...memberIds])),
+    };
+
+    this.patchState((state) => ({
+      ...state,
+      channels: state.channels.map((channel) => (channel.id === channelId ? nextChannel : channel)),
+    }));
+
+    return nextChannel;
+  }
+
+  joinChannel(channelId: string): boolean {
+    const currentUser = this.currentUser();
+
+    if (!currentUser) {
+      return false;
+    }
+
+    return !!this.addMembersToChannel(channelId, [currentUser.id]);
+  }
+
+  leaveChannel(channelId: string): boolean {
+    const state = this.state();
+    const currentChannel = state.channels.find((channel) => channel.id === channelId);
+
+    if (!currentChannel || currentChannel.createdBy === state.currentUserId) {
+      return false;
+    }
+
+    const nextChannels = state.channels.map((channel) =>
+      channel.id === channelId
+        ? { ...channel, memberIds: channel.memberIds.filter((userId) => userId !== state.currentUserId) }
+        : channel,
+    );
+
+    this.patchState((currentState) => ({
+      ...currentState,
+      channels: nextChannels,
+    }));
+
+    return true;
+  }
+
+  deleteChannel(channelId: string): boolean {
+    const state = this.state();
+    const currentChannel = state.channels.find((channel) => channel.id === channelId);
+
+    if (!currentChannel || currentChannel.createdBy !== state.currentUserId) {
+      return false;
+    }
+
+    const nextChannels = state.channels.filter((channel) => channel.id !== channelId);
+    const nextThreads = state.threads.filter((thread) => thread.channelId !== channelId);
+    const nextMessages = state.messages.filter((message) => message.channelId !== channelId);
+    const nextSelected = this.nextChannelSelection(
+      { ...state, threads: nextThreads },
+      nextChannels,
+      channelId,
+    );
+
+    this.patchState((currentState) => ({
+      ...currentState,
+      channels: nextChannels,
+      messages: nextMessages,
+      threads: nextThreads,
+      selectedChannelId: nextSelected.channelId,
+      selectedThreadId: nextSelected.threadId,
+    }));
+
+    return true;
   }
 
   updateChannel(channelId: string, updates: Partial<Pick<MockChannel, 'name' | 'description'>>): MockChannel | null {
@@ -421,6 +505,23 @@ export class MockDatabaseService {
     const minutes = String(value.getMinutes()).padStart(2, '0');
 
     return `${hours}:${minutes} Uhr`;
+  }
+
+  private nextChannelSelection(
+    state: MockDatabaseState,
+    channels: MockChannel[],
+    removedChannelId: string,
+  ): { channelId: string; threadId: string } {
+    if (state.selectedChannelId !== removedChannelId) {
+      return { channelId: state.selectedChannelId, threadId: state.selectedThreadId };
+    }
+
+    const nextChannelId = channels[0]?.id ?? '';
+    const nextThreadId = nextChannelId
+      ? state.threads.find((thread) => thread.channelId === nextChannelId)?.id ?? ''
+      : '';
+
+    return { channelId: nextChannelId, threadId: nextThreadId };
   }
 
   private patchState(updater: (state: MockDatabaseState) => MockDatabaseState): void {
