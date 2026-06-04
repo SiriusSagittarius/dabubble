@@ -19,7 +19,17 @@ export class MockDatabaseService {
   readonly users = computed(() => this.state().users);
   readonly channels = computed(() => this.state().channels);
   readonly currentUser = computed(() => this.findUser(this.state().currentUserId));
-  readonly contacts = computed(() => this.state().users.filter((user) => user.id !== this.state().currentUserId));
+  readonly contacts = computed(() => this.state().users);
+  readonly directMessageUsers = computed(() => {
+    const currentUser = this.currentUser();
+    const users = this.state().users;
+
+    if (!currentUser) {
+      return users;
+    }
+
+    return [currentUser, ...users.filter((user) => user.id !== currentUser.id)];
+  });
 
   readonly activeChannel = computed(() => {
     const state = this.state();
@@ -203,7 +213,7 @@ export class MockDatabaseService {
       name: name.trim(),
       email: normalizedEmail,
       password,
-      avatarClass: 'avatar-4',
+      avatarClass: this.avatarClassForId(avatarId),
       ...(avatarId ? { avatarId } : {}),
       isOnline: true,
     };
@@ -262,6 +272,26 @@ export class MockDatabaseService {
     }));
 
     return channel;
+  }
+
+  updateChannel(channelId: string, updates: Partial<Pick<MockChannel, 'name' | 'description'>>): MockChannel | null {
+    const currentChannel = this.state().channels.find((channel) => channel.id === channelId);
+
+    if (!currentChannel) {
+      return null;
+    }
+
+    const nextChannel: MockChannel = {
+      ...currentChannel,
+      ...updates,
+    };
+
+    this.patchState((state) => ({
+      ...state,
+      channels: state.channels.map((channel) => (channel.id === channelId ? nextChannel : channel)),
+    }));
+
+    return nextChannel;
   }
 
   addContact(name: string, email: string): MockUser | null {
@@ -442,6 +472,23 @@ export class MockDatabaseService {
         : fallbackId;
 
     return `${prefix}-${randomId}`;
+  }
+
+  private avatarClassForId(avatarId?: number | null): string {
+    switch (avatarId) {
+      case 1:
+        return 'avatar-1';
+      case 2:
+        return 'avatar-2';
+      case 3:
+        return 'avatar-3';
+      case 4:
+      case 5:
+      case 6:
+        return 'avatar-4';
+      default:
+        return 'avatar-4';
+    }
   }
 
   private getStorage(): Storage | null {
