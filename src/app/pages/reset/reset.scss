@@ -285,8 +285,8 @@ $error-pink: #ED1E79;
   }
 
   &:focus-within {
-    border-color: $purple-1;
-    background-color: lighten($light-purple-bg, 2%);
+    border-color: gray;
+    background-color: #fff;
   }
 
   .input-icon {
