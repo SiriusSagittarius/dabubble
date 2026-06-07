@@ -5,18 +5,20 @@ import { Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { MockDatabaseService } from '../../core/database/mock-database.service';
+import { GoogleLoginComponent, GoogleLoginSuccess } from '../../core/service/google-login/google-login';
+import { FirebaseUserService } from '../../core/service/firebase-user.service';
 
 @Component({
   selector: 'app-login',
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, GoogleLoginComponent],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
 export class Login {
-[x: string]: any;
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly database = inject(MockDatabaseService);
+  private readonly firebaseUsers = inject(FirebaseUserService);
   private loginSuccessTimer: ReturnType<typeof setTimeout> | null = null;
   private introTimers: ReturnType<typeof setTimeout>[] = [];
 
@@ -83,9 +85,33 @@ export class Login {
     }, 1600);
   }
 
-  protected loginWithGoogle(): void {
-    this.toastMessage.set('Google-Login ist noch nicht verbunden.');
-    this.showToast.set(true);
+  protected handleGoogleLogin(result: GoogleLoginSuccess): void {
+    if (!result.token || !result.user?.email) {
+      this.toastMessage.set('Google-Login konnte nicht verarbeitet werden.');
+      this.showToast.set(true);
+      return;
+    }
+
+    void this.firebaseUsers.upsertCurrentUserProfile({
+      uid: result.user.uid ?? result.user.sub ?? result.user.email,
+      email: result.user.email,
+      name: result.user.name ?? result.user.email,
+      picture: result.user.picture ?? null,
+    });
+
+    const user = this.database.loginWithGoogleProfile({
+      email: result.user.email,
+      name: result.user.name,
+      picture: result.user.picture ?? null,
+    });
+
+    if (!user) {
+      this.toastMessage.set('Google-Login hat keine E-Mail geliefert.');
+      this.showToast.set(true);
+      return;
+    }
+
+    this.router.navigate(['/home']);
   }
 
   protected loginAsGuest(): void {

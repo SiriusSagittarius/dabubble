@@ -1,6 +1,7 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { MOCK_DATABASE_SEED } from './mock-database.seed';
+import { FirebaseChatService } from '../service/firebase-chat.service';
 import {
   MockChannel,
   MockDatabaseState,
@@ -14,10 +15,19 @@ const STORAGE_KEY = 'dabubble.mock-database.v1';
 
 @Injectable({ providedIn: 'root' })
 export class MockDatabaseService {
+  private readonly chatStore = inject(FirebaseChatService);
   private readonly state = signal<MockDatabaseState>(this.loadState());
 
   readonly users = computed(() => this.state().users);
   readonly channels = computed(() => this.state().channels);
+  readonly messages = computed(() => this.state().messages);
+  readonly threads = computed(() => this.state().threads);
+  readonly recentReactionEmojis = computed(() => {
+    const fallback = ['👍', '❤️', '😂', '😮', '😢'];
+    const recent = this.state().recentReactionEmojis.slice(0, 5).filter(Boolean);
+
+    return recent.length > 0 ? recent : fallback;
+  });
   readonly currentUser = computed(() => this.findUser(this.state().currentUserId));
   readonly contacts = computed(() => this.state().users);
   readonly directMessageUsers = computed(() => {
@@ -92,6 +102,139 @@ export class MockDatabaseService {
       .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
   });
 
+  syncUsersFromFirestore(
+    users: Array<{
+      uid: string;
+      email: string;
+      name: string;
+      picture?: string | null;
+    }>,
+    currentUserUid: string | null,
+  ): void {
+    this.patchState((state) => {
+      const existingByEmail = new Map(state.users.map((user) => [user.email.toLowerCase(), user] as const));
+      const nextUsers: MockUser[] = users.map((entry, index) => {
+        const existingUser = existingByEmail.get(entry.email.toLowerCase());
+
+        if (existingUser) {
+          return {
+            ...existingUser,
+            id: entry.uid || existingUser.id,
+            name: entry.name || existingUser.name,
+            email: entry.email,
+            isOnline: currentUserUid ? entry.uid === currentUserUid || existingUser.id === currentUserUid : existingUser.isOnline,
+          };
+        }
+
+        return {
+          id: entry.uid,
+          name: entry.name,
+          email: entry.email,
+          password: '',
+          avatarClass: this.avatarClassForId((index % 4) + 1),
+          avatarId: (index % 6) + 1,
+          isOnline: currentUserUid ? entry.uid === currentUserUid : false,
+        };
+      });
+
+      const nextCurrentUserId =
+        currentUserUid && nextUsers.some((user) => user.id === currentUserUid)
+          ? currentUserUid
+          : state.currentUserId;
+
+      return {
+        ...state,
+        users: nextUsers,
+        currentUserId: nextCurrentUserId,
+      };
+    });
+  }
+
+  syncChannelsFromFirestore(
+    channels: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      memberIds?: string[];
+      createdBy?: string;
+    }>,
+  ): void {
+    this.patchState((state) => {
+      const nextChannels: MockChannel[] = channels.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        description: entry.description ?? '',
+        memberIds: entry.memberIds ?? [],
+        createdBy: entry.createdBy ?? state.currentUserId,
+      }));
+
+      const selectedChannelId = nextChannels.some((channel) => channel.id === state.selectedChannelId)
+        ? state.selectedChannelId
+        : nextChannels[0]?.id ?? '';
+
+      return {
+        ...state,
+        channels: nextChannels,
+        selectedChannelId,
+      };
+    });
+  }
+
+  syncMessagesFromFirestore(
+    messages: Array<{
+      id: string;
+      channelId: string;
+      authorId: string;
+      body: string;
+      createdAt: string;
+      threadId?: string;
+      reactions?: Array<{
+        emoji: string;
+        count: number;
+        userIds: string[];
+      }>;
+    }>,
+  ): void {
+    this.patchState((state) => ({
+      ...state,
+      messages: messages.map((message) => ({
+        id: message.id,
+        channelId: message.channelId,
+        authorId: message.authorId,
+        body: message.body,
+        createdAt: message.createdAt,
+        threadId: message.threadId,
+        reactions: message.reactions ?? [],
+      })),
+    }));
+  }
+
+  syncThreadsFromFirestore(
+    threads: Array<{
+      id: string;
+      channelId: string;
+      originMessageId: string;
+    }>,
+  ): void {
+    this.patchState((state) => {
+      const nextThreads: MockThread[] = threads.map((entry) => ({
+        id: entry.id,
+        channelId: entry.channelId,
+        originMessageId: entry.originMessageId,
+      }));
+
+      const selectedThreadId = nextThreads.some((thread) => thread.id === state.selectedThreadId)
+        ? state.selectedThreadId
+        : nextThreads[0]?.id ?? '';
+
+      return {
+        ...state,
+        threads: nextThreads,
+        selectedThreadId,
+      };
+    });
+  }
+
   login(email: string, password: string): MockLoginResult {
     const normalizedEmail = email.trim().toLowerCase();
     const user = this.state().users.find(
@@ -120,6 +263,55 @@ export class MockDatabaseService {
     }));
 
     return guest;
+  }
+
+  loginWithGoogleProfile(profile: { email?: string; name?: string; picture?: string | null }): MockUser | null {
+    const email = profile.email?.trim().toLowerCase();
+    const name = profile.name?.trim() || email || 'Google Nutzer';
+
+    if (!email) {
+      return null;
+    }
+
+    const existingUser = this.state().users.find((user) => user.email.toLowerCase() === email);
+    if (existingUser) {
+      const updatedUser = {
+        ...existingUser,
+        name: name || existingUser.name,
+        isOnline: true,
+      };
+
+      this.patchState((state) => ({
+        ...state,
+        currentUserId: existingUser.id,
+        users: state.users.map((user) => (user.id === existingUser.id ? updatedUser : user)),
+      }));
+
+      return updatedUser;
+    }
+
+    const newUser: MockUser = {
+      id: this.createId('user'),
+      name,
+      email,
+      password: '',
+      avatarClass: 'avatar-4',
+      isOnline: true,
+      ...(profile.picture ? { avatarId: 4 } : {}),
+    };
+
+    this.patchState((state) => ({
+      ...state,
+      currentUserId: newUser.id,
+      users: [...state.users, newUser],
+      channels: state.channels.map((channel) =>
+        channel.id === state.selectedChannelId
+          ? { ...channel, memberIds: Array.from(new Set([...channel.memberIds, newUser.id])) }
+          : channel,
+      ),
+    }));
+
+    return newUser;
   }
 
   requestPasswordReset(email: string): { ok: boolean; message: string } {
@@ -250,6 +442,14 @@ export class MockDatabaseService {
     }
 
     this.patchState((state) => ({ ...state, selectedThreadId: threadId }));
+  }
+
+  findMessage(messageId: string): MockMessage | null {
+    return this.state().messages.find((message) => message.id === messageId) ?? null;
+  }
+
+  findThread(threadId: string): MockThread | null {
+    return this.state().threads.find((thread) => thread.id === threadId) ?? null;
   }
 
   createChannel(name: string, memberIds: string[] = []): MockChannel | null {
@@ -429,7 +629,52 @@ export class MockDatabaseService {
       threads: [...state.threads, thread],
     }));
 
+    void this.chatStore.createThread({
+      channelId: originMessage.channelId,
+      originMessageId: originMessage.id,
+    }).then((threadId) => {
+      if (!threadId) {
+        return;
+      }
+
+      this.patchState((state) => ({
+        ...state,
+        threads: state.threads.map((entry) =>
+          entry.originMessageId === originMessage.id ? { ...entry, id: threadId } : entry,
+        ),
+        selectedThreadId: threadId,
+      }));
+    });
+
     return thread;
+  }
+
+  threadForMessage(messageId: string): MockThread | null {
+    return this.state().threads.find((thread) => thread.originMessageId === messageId) ?? null;
+  }
+
+  threadReplyCount(messageId: string): number {
+    const thread = this.threadForMessage(messageId);
+
+    if (!thread) {
+      return 0;
+    }
+
+    return this.state().messages.filter((message) => message.threadId === thread.id).length;
+  }
+
+  threadLastReplyTime(messageId: string): string | null {
+    const thread = this.threadForMessage(messageId);
+
+    if (!thread) {
+      return null;
+    }
+
+    const lastReply = this.state().messages
+      .filter((message) => message.threadId === thread.id)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+
+    return lastReply ? this.formatTime(lastReply.createdAt) : null;
   }
 
   sendChannelMessage(body: string): MockMessage | null {
@@ -450,7 +695,43 @@ export class MockDatabaseService {
       reactions: [],
     };
 
-    this.patchState((state) => ({ ...state, messages: [...state.messages, message] }));
+    const thread: MockThread = {
+      id: this.createId('thread'),
+      channelId: channel.id,
+      originMessageId: message.id,
+    };
+
+    this.patchState((state) => ({
+      ...state,
+      messages: [...state.messages, message],
+      selectedThreadId: thread.id,
+      threads: [...state.threads, thread],
+    }));
+
+    void this.chatStore.createMessage({
+      channelId: channel.id,
+      body: text,
+    });
+    void this.chatStore.createThread({
+      channelId: channel.id,
+      originMessageId: message.id,
+    }).then((threadId) => {
+      if (!threadId) {
+        return;
+      }
+
+      this.patchState((state) => ({
+        ...state,
+        threads: state.threads.map((entry) =>
+          entry.originMessageId === message.id ? { ...entry, id: threadId } : entry,
+        ),
+        selectedThreadId: threadId,
+        messages: state.messages.map((entry) =>
+          entry.id === message.id ? { ...entry, threadId } : entry,
+        ),
+      }));
+    });
+
     return message;
   }
 
@@ -474,7 +755,80 @@ export class MockDatabaseService {
     };
 
     this.patchState((state) => ({ ...state, messages: [...state.messages, message] }));
+    void this.chatStore.createMessage({
+      channelId: thread.channelId,
+      body: text,
+      threadId: thread.id,
+    });
     return message;
+  }
+
+  updateMessageBody(messageId: string, body: string): MockMessage | null {
+    const text = body.trim();
+    const currentUser = this.currentUser();
+    const message = this.state().messages.find((entry) => entry.id === messageId);
+
+    if (!text || !currentUser || !message || message.authorId !== currentUser.id) {
+      return null;
+    }
+
+    const updatedMessage = { ...message, body: text };
+
+    this.patchState((state) => ({
+      ...state,
+      messages: state.messages.map((entry) => (entry.id === messageId ? updatedMessage : entry)),
+    }));
+
+    void this.chatStore.updateMessage(messageId, text);
+
+    return updatedMessage;
+  }
+
+  toggleMessageReaction(messageId: string, emoji: string): MockMessage | null {
+    const currentUser = this.currentUser();
+    const message = this.state().messages.find((entry) => entry.id === messageId);
+
+    if (!currentUser || !message) {
+      return null;
+    }
+
+    const reactions = message.reactions.map((reaction) => ({ ...reaction }));
+    const existingReaction = reactions.find((reaction) => reaction.emoji === emoji);
+
+    if (existingReaction) {
+      const hasReacted = existingReaction.userIds.includes(currentUser.id);
+
+      if (hasReacted) {
+        existingReaction.userIds = existingReaction.userIds.filter((userId) => userId !== currentUser.id);
+        existingReaction.count = Math.max(0, existingReaction.count - 1);
+      } else {
+        existingReaction.userIds = [...existingReaction.userIds, currentUser.id];
+        existingReaction.count += 1;
+      }
+    } else {
+      reactions.push({
+        emoji,
+        count: 1,
+        userIds: [currentUser.id],
+      });
+    }
+
+    const filteredReactions = reactions.filter((reaction) => reaction.count > 0);
+    const updatedMessage = { ...message, reactions: filteredReactions };
+    const recentReactionEmojis = [
+      emoji,
+      ...this.state().recentReactionEmojis.filter((entry) => entry !== emoji),
+    ].slice(0, 5);
+
+    this.patchState((state) => ({
+      ...state,
+      recentReactionEmojis,
+      messages: state.messages.map((entry) => (entry.id === messageId ? updatedMessage : entry)),
+    }));
+
+    void this.chatStore.toggleReaction(messageId, emoji);
+
+    return updatedMessage;
   }
 
   resetDatabase(): void {

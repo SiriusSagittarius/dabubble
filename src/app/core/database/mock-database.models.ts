@@ -43,6 +43,7 @@ export interface MockDatabaseState {
   currentUserId: string;
   selectedChannelId: string;
   selectedThreadId: string;
+  recentReactionEmojis: string[];
   users: MockUser[];
   channels: MockChannel[];
   messages: MockMessage[];

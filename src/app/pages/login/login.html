@@ -116,11 +116,7 @@
 
        
           <div class="google-container">
-            <button type="button" class="btn-google" (click)="loginWithGoogle()">
-           
-              <img class="google-icon" src="assets/google.svg" alt="" />
-              <span>Anmelden mit Google</span>
-            </button>
+            <app-google-login (loginSuccess)="handleGoogleLogin($event)"></app-google-login>
           </div>
         </div>
 

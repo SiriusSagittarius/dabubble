@@ -385,7 +385,7 @@ $error-pink: #ED1E79;
     color: #FFFFFF;
 
     &:hover:not(:disabled) {
-      background: darken($purple-1, 8%);
+      background:#000;
     }
 
     &:disabled {

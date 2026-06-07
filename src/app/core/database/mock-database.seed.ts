@@ -4,6 +4,7 @@ export const MOCK_DATABASE_SEED: MockDatabaseState = {
   currentUserId: 'user-frederik',
   selectedChannelId: 'channel-dev',
   selectedThreadId: 'thread-angular-version',
+  recentReactionEmojis: ['👍', '❤️', '😂', '😮'],
   users: [
     {
       id: 'user-frederik',
@@ -23,7 +24,7 @@ export const MOCK_DATABASE_SEED: MockDatabaseState = {
     },
     {
       id: 'user-sofia',
-      name: 'Sofia Mueller',
+      name: 'Sofia Müller',
       email: 'sofia@dabubble.dev',
       password: 'dabubble123',
       avatarClass: 'avatar-2',

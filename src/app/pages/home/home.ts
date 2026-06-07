@@ -2,12 +2,13 @@ import { Component, ElementRef, HostListener, ViewChild, inject } from '@angular
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { signal } from '@angular/core';
+import { PickerComponent } from '@ctrl/ngx-emoji-mart';
 
 import { MockDatabaseService } from '../../core/database/mock-database.service';
 
 @Component({
   selector: 'app-home',
-  imports: [FormsModule],
+  imports: [FormsModule, PickerComponent],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
@@ -20,6 +21,7 @@ export class Home {
   protected profileEditMode = false;
   protected profileEditName = '';
   protected selectedProfileUserId: string | null = null;
+  protected workspaceSearchDraft = '';
   protected channelNameEditMode = false;
   protected channelDescriptionEditMode = false;
   protected channelNameDraft = '';
@@ -32,6 +34,14 @@ export class Home {
   protected readonly showAddMembersSuggestions = signal(false);
   protected pendingAddChannelId: string | null = null;
   protected chatMessageDraft = '';
+  protected threadMessageDraft = '';
+  protected readonly activeMessageMenuId = signal<string | null>(null);
+  protected readonly activeThreadEditMenuId = signal<string | null>(null);
+  protected readonly activeThreadReactionBarId = signal<string | null>(null);
+  protected readonly editingMessageId = signal<string | null>(null);
+  protected readonly activeEmojiPicker = signal<'message' | 'thread' | null>(null);
+  protected editMessageDraft = '';
+  protected readonly selectedDirectMessageUserId = signal<string | null>(null);
   protected readonly selectedAddMemberIds = signal<string[]>([]);
   protected readonly membersPanelOpen = signal(false);
   protected readonly addMembersPanelOpen = signal(false);
@@ -41,6 +51,15 @@ export class Home {
   protected readonly channelsExpanded = signal(true);
   protected readonly directMessagesExpanded = signal(false);
   protected readonly addChannelDialogOpen = signal(false);
+  protected readonly showMainChatIntro = signal(false);
+  protected readonly showTodoList = signal(false);
+  protected readonly emojiCategories = ['recent', 'people', 'nature', 'foods', 'activity', 'places', 'objects', 'symbols'];
+  protected readonly todoItems = signal([
+    { id: 1, title: 'Channel-Layout final prüfen', done: false },
+    { id: 2, title: 'Thread-Ansicht responsive testen', done: true },
+    { id: 3, title: 'Neue Nachrichten-Ansicht mit Daten verbinden', done: false },
+  ]);
+  protected todoDraft = '';
 
   @ViewChild('profileArea', { read: ElementRef })
   private profileArea?: ElementRef<HTMLElement>;
@@ -51,12 +70,72 @@ export class Home {
   @ViewChild('chatMessage')
   private chatMessageInput?: ElementRef<HTMLTextAreaElement>;
 
+  @ViewChild('threadMessage')
+  private threadMessageInput?: ElementRef<HTMLTextAreaElement>;
+
   protected sendChannelMessage(body: string): void {
-    this.database.sendChannelMessage(body);
+    const message = this.database.sendChannelMessage(body);
+
+    if (message) {
+      this.threadCollapsed.set(false);
+    }
   }
 
   protected sendThreadReply(body: string): void {
-    this.database.sendThreadReply(body);
+    const message = this.database.sendThreadReply(body);
+
+    if (message) {
+      this.threadMessageDraft = '';
+    }
+  }
+
+  protected openMessageThread(messageId: string): void {
+    this.activeMessageMenuId.set(null);
+    this.database.createThreadFromMessage(messageId);
+    this.threadCollapsed.set(false);
+  }
+
+  protected toggleMessageMenu(messageId: string): void {
+    this.activeMessageMenuId.update((activeId) => (activeId === messageId ? null : messageId));
+  }
+
+  protected toggleThreadEditMenu(messageId: string): void {
+    this.activeThreadReactionBarId.set(null);
+    this.activeThreadEditMenuId.update((activeId) => (activeId === messageId ? null : messageId));
+  }
+
+  protected toggleThreadReactionBar(messageId: string): void {
+    this.activeThreadEditMenuId.set(null);
+    this.activeThreadReactionBarId.update((activeId) => (activeId === messageId ? null : messageId));
+  }
+
+  protected closeThreadReactionBar(): void {
+    this.activeThreadReactionBarId.set(null);
+  }
+
+  protected startEditingThreadMessage(messageId: string, body: string): void {
+    this.activeThreadEditMenuId.set(null);
+    this.activeThreadReactionBarId.set(null);
+    this.startEditingMessage(messageId, body);
+  }
+
+  protected startEditingMessage(messageId: string, body: string): void {
+    this.activeMessageMenuId.set(null);
+    this.editingMessageId.set(messageId);
+    this.editMessageDraft = body;
+  }
+
+  protected cancelEditingMessage(): void {
+    this.editingMessageId.set(null);
+    this.editMessageDraft = '';
+  }
+
+  protected saveEditedMessage(messageId: string): void {
+    const updatedMessage = this.database.updateMessageBody(messageId, this.editMessageDraft);
+
+    if (updatedMessage) {
+      this.cancelEditingMessage();
+    }
   }
 
   protected shouldShowDateSeparator(index: number): boolean {
@@ -94,6 +173,25 @@ export class Home {
     ];
 
     return `${weekdays[value.getDay()]}, ${value.getDate()} ${months[value.getMonth()]}`;
+  }
+
+  protected formatMessageTimestamp(date: string): string {
+    const value = new Date(date);
+    const day = String(value.getDate()).padStart(2, '0');
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const year = value.getFullYear();
+    const hours = String(value.getHours()).padStart(2, '0');
+    const minutes = String(value.getMinutes()).padStart(2, '0');
+
+    return `${day}.${month}.${year} ${hours}:${minutes} Uhr`;
+  }
+
+  protected formatThreadMetaTimestamp(date: string): string {
+    return this.formatMessageTimestamp(date).replace(/\s/g, '\u00a0');
+  }
+
+  protected threadUserName(userId: string): string {
+    return this.database.userName(userId).replace(/\s/g, '\u00a0');
   }
 
   protected toggleChannels(): void {
@@ -135,6 +233,96 @@ export class Home {
 
   protected toggleSidebar(): void {
     this.sidebarCollapsed.update((value) => !value);
+  }
+
+  protected openMainChatIntro(): void {
+    this.selectedDirectMessageUserId.set(null);
+    this.showTodoList.set(false);
+    this.showMainChatIntro.update((value) => !value);
+  }
+
+  protected workspaceSearchChannels() {
+    const query = this.workspaceSearchDraft.trim().toLowerCase();
+
+    if (!query) {
+      return [];
+    }
+
+    return this.database.channels().filter(
+      (channel) =>
+        channel.name.toLowerCase().includes(query) || channel.description.toLowerCase().includes(query),
+    );
+  }
+
+  protected workspaceSearchUsers() {
+    const query = this.workspaceSearchDraft.trim().toLowerCase();
+
+    if (!query) {
+      return [];
+    }
+
+    return this.database.users().filter(
+      (user) =>
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query),
+    );
+  }
+
+  protected workspaceSearchMessages() {
+    const query = this.workspaceSearchDraft.trim().toLowerCase();
+
+    if (!query) {
+      return [];
+    }
+
+    return this.database.messages().filter((message) => {
+      const author = this.database.findUser(message.authorId);
+      const channel = this.database.channels().find((entry) => entry.id === message.channelId);
+      const body = message.body.toLowerCase();
+
+      return (
+        body.includes(query) ||
+        author?.name.toLowerCase().includes(query) ||
+        channel?.name.toLowerCase().includes(query)
+      );
+    });
+  }
+
+  protected showWorkspaceSearchResults(): boolean {
+    return this.workspaceSearchDraft.trim().length > 0;
+  }
+
+  protected openWorkspaceSearchChannel(channelId: string): void {
+    this.database.selectChannel(channelId);
+    this.workspaceSearchDraft = '';
+  }
+
+  protected openWorkspaceSearchUser(userId: string): void {
+    this.openContactProfile(userId);
+    this.workspaceSearchDraft = '';
+  }
+
+  protected openWorkspaceSearchMessage(messageId: string): void {
+    const message = this.database.findMessage(messageId);
+
+    if (!message) {
+      return;
+    }
+
+    this.database.selectChannel(message.channelId);
+
+    const thread = this.database.threadForMessage(message.id) ?? (message.threadId ? this.database.findThread(message.threadId) : null);
+
+    if (thread) {
+      this.database.selectThread(thread.id);
+      this.threadCollapsed.set(false);
+    }
+
+    this.workspaceSearchDraft = '';
+  }
+
+  protected channelName(channelId: string): string {
+    return this.database.channels().find((channel) => channel.id === channelId)?.name ?? 'Channel';
   }
 
   protected closeThread(): void {
@@ -366,25 +554,19 @@ export class Home {
   }
 
   protected contactSuggestions() {
-    const atIndex = this.chatMessageDraft.lastIndexOf('@');
-    if (atIndex === -1) {
-      return [];
-    }
+    return this.mentionSuggestions(this.chatMessageDraft);
+  }
 
-    const query = this.chatMessageDraft
-      .slice(atIndex + 1)
-      .trim()
-      .toLowerCase();
-
-    return this.database.directMessageUsers().filter((user) => {
-      const name = user.name.toLowerCase();
-      const email = user.email.toLowerCase();
-      return name.includes(query) || email.includes(query);
-    });
+  protected threadContactSuggestions() {
+    return this.mentionSuggestions(this.threadMessageDraft);
   }
 
   protected showContactSuggestions(): boolean {
-    return this.chatMessageDraft.lastIndexOf('@') !== -1 && this.contactSuggestions().length > 0;
+    return this.chatMessageDraft.trimStart().startsWith('@') && this.contactSuggestions().length > 0;
+  }
+
+  protected showThreadContactSuggestions(): boolean {
+    return this.threadMessageDraft.trimStart().startsWith('@') && this.threadContactSuggestions().length > 0;
   }
 
   protected selectChannelSuggestion(name: string): void {
@@ -398,30 +580,242 @@ export class Home {
   }
 
   protected selectContactSuggestion(name: string): void {
-    const atIndex = this.chatMessageDraft.lastIndexOf('@');
-    if (atIndex === -1) {
-      this.chatMessageDraft = `@${name} `;
-    } else {
-      this.chatMessageDraft = `${this.chatMessageDraft.slice(0, atIndex)}@${name} `;
-    }
+    this.chatMessageDraft = this.replaceLeadingMention(this.chatMessageDraft, name);
     this.chatMessageInput?.nativeElement.focus();
   }
 
+  protected selectThreadContactSuggestion(name: string): void {
+    this.threadMessageDraft = this.replaceLeadingMention(this.threadMessageDraft, name);
+    this.threadMessageInput?.nativeElement.focus();
+  }
+
   protected insertContactMentionTrigger(): void {
+    this.insertMentionTrigger(this.chatMessageInput, 'chat');
+  }
+
+  protected insertThreadMentionTrigger(): void {
+    this.insertMentionTrigger(this.threadMessageInput, 'thread');
+  }
+
+  private mentionSuggestions(draft: string) {
+    const trimmed = draft.trimStart();
+    if (!trimmed.startsWith('@')) {
+      return [];
+    }
+
+    const query = trimmed.slice(1).trim().toLowerCase();
+    const members = this.database.activeChannelMembers();
+
+    return members
+      .filter((user) => {
+        const name = user.name.toLowerCase();
+        const email = user.email.toLowerCase();
+
+        if (!query) {
+          return true;
+        }
+
+        return name.includes(query) || email.includes(query);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  protected toggleEmojiPicker(target: 'message' | 'thread'): void {
+    this.activeEmojiPicker.update((activeTarget) => (activeTarget === target ? null : target));
+  }
+
+  protected closeEmojiPicker(): void {
+    this.activeEmojiPicker.set(null);
+  }
+
+  protected addReaction(messageId: string, reaction: string): void {
+    this.database.toggleMessageReaction(messageId, reaction);
+  }
+
+  protected reactionIcon(reaction: string): string {
+    switch (reaction) {
+      case 'check':
+        return '✅';
+      case 'hands':
+        return '👏';
+      case 'thumbs_up':
+        return '👍';
+      case 'heart':
+        return '❤️';
+      case 'smile':
+        return '😊';
+      case 'open_mouth':
+        return '??';
+      case 'sad':
+        return '??';
+      default:
+        return reaction;
+    }
+  }
+
+  protected reactionHoverLabel(reaction: { userIds: string[] }): string {
+    const names = reaction.userIds.map((userId) => this.database.userName(userId)).filter(Boolean);
+
+    if (!names.length) {
+      return 'Reaktion';
+    }
+
+    return `${names.join(', ')} hat reagiert`;
+  }
+
+  protected reactionHoverUser(reaction: { userIds: string[] }): string {
+    const name = reaction.userIds
+      .map((userId) => this.database.userName(userId))
+      .find(Boolean);
+
+    return name ?? 'Reaktion';
+  }
+
+  private replaceLeadingMention(draft: string, name: string): string {
+    const trimmed = draft.trimStart();
+    if (!trimmed.startsWith('@')) {
+      return `@${name} `;
+    }
+
+    const remaining = trimmed.slice(1);
+    const spaceIndex = remaining.search(/\s/);
+    const tail = spaceIndex === -1 ? '' : remaining.slice(spaceIndex);
+
+    return `@${name}${tail || ' '}`;
+  }
+
+  private replaceThreadMention(name: string): void {
+    this.threadMessageDraft = this.replaceLeadingMention(this.threadMessageDraft, name);
+  }
+
+  private insertMentionTrigger(
+    textareaRef: ElementRef<HTMLTextAreaElement> | undefined,
+    target: 'chat' | 'thread',
+  ): void {
+    const textarea = textareaRef?.nativeElement;
+
+    if (!textarea) {
+      if (target === 'chat') {
+        this.chatMessageDraft = this.chatMessageDraft ? `${this.chatMessageDraft}@` : '@';
+      } else {
+        this.threadMessageDraft = this.threadMessageDraft ? `${this.threadMessageDraft}@` : '@';
+      }
+      return;
+    }
+
+    const value = target === 'chat' ? this.chatMessageDraft : textarea.value;
+    const start = textarea.selectionStart ?? value.length;
+    const end = textarea.selectionEnd ?? start;
+    const nextValue = `${value.slice(0, start)}@${value.slice(end)}`;
+
+    if (target === 'chat') {
+      this.chatMessageDraft = nextValue;
+    } else {
+      this.threadMessageDraft = nextValue;
+    }
+
+    queueMicrotask(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + 1, start + 1);
+    });
+  }
+
+  @HostListener('document:click', ['$event'])
+  protected closeEmojiPickerOnOutsideClick(event: MouseEvent): void {
+    if (!this.activeEmojiPicker()) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      this.activeEmojiPicker.set(null);
+      return;
+    }
+
+    if (
+      target.closest('.emoji-picker-popover') ||
+      target.closest('.action-button-emoji')
+    ) {
+      return;
+    }
+
+    this.activeEmojiPicker.set(null);
+  }
+
+
+  @HostListener('document:pointerdown', ['$event'])
+  @HostListener('document:mousedown', ['$event'])
+  @HostListener('document:touchstart', ['$event'])
+  @HostListener('document:click', ['$event'])
+  protected closeThreadReactionBarOnOutsideClick(event: Event): void {
+    if (!this.activeThreadReactionBarId()) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest('.thread-reaction-popover') ||
+      target?.closest('.thread-edit-icon-button') ||
+      target?.closest('.thread-reaction-add') ||
+      target?.closest('.thread-message-time-with-icon')
+    ) {
+      return;
+    }
+
+    this.activeThreadReactionBarId.set(null);
+  }
+
+  protected onMessageEmojiSelect(event: { emoji?: { native?: string } }, target: 'message' | 'thread'): void {
+    const emoji = event.emoji?.native;
+
+    if (!emoji) {
+      return;
+    }
+
+    if (target === 'thread') {
+      this.insertEmojiIntoThreadReply(emoji);
+      this.closeEmojiPicker();
+      return;
+    }
+
+    this.insertEmojiIntoMessageDraft(emoji);
+    this.closeEmojiPicker();
+  }
+
+  private insertEmojiIntoMessageDraft(emoji: string): void {
     const textarea = this.chatMessageInput?.nativeElement;
 
     if (!textarea) {
-      this.chatMessageDraft = this.chatMessageDraft ? `${this.chatMessageDraft}@` : '@';
+      this.chatMessageDraft = `${this.chatMessageDraft}${emoji}`;
       return;
     }
 
     const start = textarea.selectionStart ?? this.chatMessageDraft.length;
     const end = textarea.selectionEnd ?? start;
-    this.chatMessageDraft = `${this.chatMessageDraft.slice(0, start)}@${this.chatMessageDraft.slice(end)}`;
+    this.chatMessageDraft = `${this.chatMessageDraft.slice(0, start)}${emoji}${this.chatMessageDraft.slice(end)}`;
 
     queueMicrotask(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + 1, start + 1);
+      textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
+  }
+
+  private insertEmojiIntoThreadReply(emoji: string): void {
+    const textarea = this.threadMessageInput?.nativeElement;
+
+    if (!textarea) {
+      this.threadMessageDraft = `${this.threadMessageDraft}${emoji}`;
+      return;
+    }
+
+    const value = this.threadMessageDraft;
+    const start = textarea.selectionStart ?? value.length;
+    const end = textarea.selectionEnd ?? start;
+    this.threadMessageDraft = `${value.slice(0, start)}${emoji}${value.slice(end)}`;
+
+    queueMicrotask(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + emoji.length, start + emoji.length);
     });
   }
 
@@ -502,6 +896,59 @@ export class Home {
     this.profileEditName = this.profileUser()?.name ?? '';
   }
 
+  protected openDirectMessage(userId: string): void {
+    this.profileMenuOpen = false;
+    this.profileDialogOpen = false;
+    this.profileEditMode = false;
+    this.selectedProfileUserId = null;
+    this.showMainChatIntro.set(false);
+    this.channelEditionOpen.set(false);
+
+    if (this.database.isCurrentUser(userId)) {
+      this.selectedDirectMessageUserId.set(null);
+      this.showTodoList.set(true);
+      this.threadCollapsed.set(true);
+      return;
+    }
+
+    this.selectedDirectMessageUserId.set(userId);
+    this.showTodoList.set(false);
+    this.threadCollapsed.set(false);
+  }
+
+  protected addTodoItem(title: string): void {
+    const trimmedTitle = title.trim();
+
+    if (!trimmedTitle) {
+      return;
+    }
+
+    this.todoItems.update((items) => [
+      ...items,
+      {
+        id: Date.now(),
+        title: trimmedTitle,
+        done: false,
+      },
+    ]);
+  }
+
+  protected toggleTodoItem(todoId: number): void {
+    this.todoItems.update((items) =>
+      items.map((item) => (item.id === todoId ? { ...item, done: !item.done } : item)),
+    );
+  }
+
+  protected messageProfileUser(): void {
+    const user = this.profileUser();
+
+    if (!user) {
+      return;
+    }
+
+    this.openDirectMessage(user.id);
+  }
+
   protected logout(): void {
     this.profileMenuOpen = false;
     this.profileDialogOpen = false;
@@ -514,6 +961,11 @@ export class Home {
     this.profileDialogOpen = false;
     this.profileEditMode = false;
     this.selectedProfileUserId = null;
+  }
+
+  protected directMessageUser() {
+    const userId = this.selectedDirectMessageUserId();
+    return userId ? this.database.findUser(userId) : null;
   }
 
   protected editProfile(): void {
@@ -711,8 +1163,7 @@ export class Home {
 
     return `${year}-${month}-${day}`;
   }
-
-  @HostListener('document:click', ['$event'])
+@HostListener('document:click', ['$event'])
   protected closeProfileMenuOnOutsideClick(event: MouseEvent): void {
     if (!this.profileMenuOpen) {
       return;
@@ -726,11 +1177,13 @@ export class Home {
     this.profileMenuOpen = false;
   }
 
+  // HIER EINGEFÜGT: Schließt das Reaction-Menü bei Klicks außerhalb
   @HostListener('document:keydown.escape')
   protected closeProfileMenuOnEscape(): void {
     this.profileMenuOpen = false;
     this.profileDialogOpen = false;
     this.profileEditMode = false;
     this.closeAddChannelDialog();
+    this.activeThreadReactionBarId.set(null); // Schließt das Menü auch bei Escape
   }
 }

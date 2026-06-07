@@ -5,8 +5,73 @@
     </div>
 
     <div class="searchbar-container" aria-label="Suche">
-      <input type="text" placeholder="Devspace durchsuchen" class="searchbar" />
+      <input
+        type="text"
+        placeholder="Devspace durchsuchen"
+        class="searchbar"
+        name="workspaceSearchDraft"
+        [(ngModel)]="workspaceSearchDraft"
+      />
       <img src="/assets/search-icon.svg" alt="" class="searchbar-icon" />
+
+      @if (showWorkspaceSearchResults()) {
+        <div class="workspace-search-results" role="listbox" aria-label="Suchergebnisse">
+          @if (workspaceSearchChannels().length > 0) {
+            <div class="workspace-search-group">
+              <span class="workspace-search-group-title">Kanäle</span>
+              @for (channel of workspaceSearchChannels(); track channel.id) {
+                <button
+                  type="button"
+                  class="workspace-search-item workspace-search-item-channel"
+                  (click)="openWorkspaceSearchChannel(channel.id)"
+                >
+                  <span class="workspace-search-item-prefix">#</span>
+                  <span class="workspace-search-item-text">{{ channel.name }}</span>
+                </button>
+              }
+            </div>
+          }
+
+          @if (workspaceSearchUsers().length > 0) {
+            <div class="workspace-search-group">
+              <span class="workspace-search-group-title">Profile</span>
+              @for (user of workspaceSearchUsers(); track user.id) {
+                <button
+                  type="button"
+                  class="workspace-search-item workspace-search-item-user"
+                  (click)="openWorkspaceSearchUser(user.id)"
+                >
+                  <img class="workspace-search-avatar" [src]="avatarSvgPath(user.id)" [alt]="user.name" />
+                  <span class="workspace-search-item-text">{{ user.name }}</span>
+                </button>
+              }
+            </div>
+          }
+
+          @if (workspaceSearchMessages().length > 0) {
+            <div class="workspace-search-group">
+              <span class="workspace-search-group-title">Nachrichten</span>
+              @for (message of workspaceSearchMessages(); track message.id) {
+                <button
+                  type="button"
+                  class="workspace-search-item workspace-search-item-message"
+                  (click)="openWorkspaceSearchMessage(message.id)"
+                >
+                  <img
+                    class="workspace-search-avatar workspace-search-avatar-small"
+                    [src]="avatarSvgPath(message.authorId)"
+                    [alt]="database.userName(message.authorId)"
+                  />
+                  <span class="workspace-search-item-text workspace-search-item-text-message">
+                    <span class="workspace-search-item-message-channel"># {{ channelName(message.channelId) }}</span>
+                    <span class="workspace-search-item-message-body">{{ message.body }}</span>
+                  </span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
 
     <div class="profile-area" #profileArea>
@@ -58,7 +123,12 @@
         <div class="workspace-text">
           <span class="workspace-name">Devspace</span>
         </div>
-        <button type="button" class="workspace-edit-button" aria-label="Workspace bearbeiten">
+        <button
+          type="button"
+          class="workspace-edit-button"
+          aria-label="Workspace bearbeiten"
+          (click)="openMainChatIntro()"
+        >
           <img src="/assets/edit.svg" alt="" class="workspace-edit-icon" />
         </button>
       </div>
@@ -96,12 +166,15 @@
                 [class.active]="channel.id === database.activeChannel()?.id"
                 (click)="
                   database.selectChannel(channel.id);
-                  channelEditionOpen.set(true);
+                  channelEditionOpen.set(false);
+                  showMainChatIntro.set(false);
+                  showTodoList.set(false);
+                  selectedDirectMessageUserId.set(null);
                   syncChannelDrafts();
                   $event.preventDefault()
                 "
               >
-                <span class="icon icon-tag"></span>
+                <span class="icon icon-hash" aria-hidden="true"></span>
                 <span>{{ channel.name }}</span>
               </a>
             }
@@ -142,13 +215,16 @@
           aria-label="Direktnachrichten"
         >
           @for (contact of database.directMessageUsers(); track contact.id) {
-            <button type="button" class="dm-item" (click)="openContactProfile(contact.id)">
-              <span
-                class="avatar"
-                [style.backgroundImage]="contactAvatarBackgroundImage(contact.id)"
-                [style.backgroundPosition]="contactAvatarBackgroundPosition(contact.id)"
-                [style.backgroundSize]="contactAvatarBackgroundSize(contact.id)"
-              ></span>
+            <button
+              type="button"
+              class="dm-item"
+              [class.dm-item-active]="
+                (selectedDirectMessageUserId() === contact.id && !showTodoList()) ||
+                (database.isCurrentUser(contact.id) && showTodoList())
+              "
+              (click)="openDirectMessage(contact.id)"
+            >
+              <img class="dm-avatar-image" [src]="avatarSvgPath(contact.id)" [alt]="contact.name" />
               <span class="dm-name">
                 {{ contact.name }}
                 @if (database.isCurrentUser(contact.id)) {
@@ -196,53 +272,159 @@
     class="center-panel"
     [class.center-panel-expanded]="sidebarCollapsed()"
     [class.center-panel-thread-collapsed]="threadCollapsed()"
+    [class.center-panel-main-chat]="showMainChatIntro()"
+    [class.center-panel-direct-message]="!!selectedDirectMessageUserId()"
+    [class.center-panel-todo]="showTodoList()"
     aria-label="Hauptbereich"
   >
     <div class="center-card">
-      <header class="chat-header">
-        <button
-          type="button"
-          class="channel-title"
-          aria-label="Channel-Details oeffnen"
-          (click)="toggleChannelEdition()"
-        >
-          <span class="channel-hash">#</span>
-          <span class="channel-name">{{ database.activeChannel()?.name ?? 'Channel' }}</span>
-          <span class="channel-arrow-down" aria-hidden="true"></span>
-        </button>
+      @if (showTodoList()) {
+        <div class="todo-view" aria-label="Meine Todo-Liste">
+          <header class="todo-header">
+            <span class="todo-avatar-wrap">
+              @if (database.currentUser(); as currentUser) {
+                <img class="todo-avatar" [src]="avatarSvgPath(currentUser.id)" [alt]="currentUser.name" />
+                <span class="todo-status" [class.online]="currentUser.isOnline" aria-hidden="true"></span>
+              }
+            </span>
+            <div class="todo-header-text">
+              <span class="todo-kicker">Devspace</span>
+              <h2>Meine Todo-Liste</h2>
+            </div>
+          </header>
 
-        <div class="members-area" aria-label="Mitglieder">
-          <div class="members-preview-wrap">
-            <img src="/assets/members-preview-hover.svg" alt="" class="members-preview-hover" />
-            <div class="members-preview">
+          <section class="todo-body">
+            @for (todo of todoItems(); track todo.id) {
               <button
                 type="button"
-                class="members-preview-button"
+                class="todo-item"
+                [class.todo-item-done]="todo.done"
+                (click)="toggleTodoItem(todo.id)"
+              >
+                <span class="todo-check" aria-hidden="true"></span>
+                <span class="todo-title">{{ todo.title }}</span>
+              </button>
+            }
+          </section>
+
+          <form
+            class="todo-input-box"
+            aria-label="Todo hinzufügen"
+            (submit)="addTodoItem(todoDraft); todoDraft = ''; $event.preventDefault()"
+          >
+            <textarea
+              name="todoDraft"
+              [(ngModel)]="todoDraft"
+              class="todo-input"
+              rows="2"
+              placeholder="Neue Aufgabe eintragen"
+            ></textarea>
+            <div class="todo-input-actions">
+              <span class="todo-input-label">Privat fuer dich</span>
+              <button type="submit" class="todo-send-button" aria-label="Todo hinzufügen">
+                <img src="/assets/send.svg" alt="" class="send-icon" />
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
+      @if (showMainChatIntro()) {
+        <div class="main-chat-intro" aria-label="Neue Nachricht">
+          <header class="main-chat-intro-header">
+            <h2>Neue Nachricht</h2>
+            <label class="main-chat-recipient-field">
+              <span>An:</span>
+              <input type="text" placeholder="#channel, @jemand oder E-Mail Adresse" />
+            </label>
+          </header>
+
+          <div class="main-chat-intro-body" aria-hidden="true"></div>
+        </div>
+      }
+
+      @if (directMessageUser(); as directUser) {
+        <div class="direct-message-summary">
+          <header class="direct-message-header">
+            <span class="direct-message-avatar-wrap direct-message-avatar-wrap-large">
+              <img
+                class="direct-message-avatar"
+                [src]="avatarSvgPath(directUser.id)"
+                [alt]="directUser.name"
+              />
+              <span
+                class="direct-message-avatar-status"
+                [class.online]="directUser.isOnline"
+                aria-hidden="true"
+              ></span>
+            </span>
+            <div class="direct-message-header-text">
+              <span class="direct-message-name">{{ directUser.name }}</span>
+            </div>
+          </header>
+
+          <div class="direct-message-info-profile" aria-label="Unterhaltungsinfo">
+            <div class="direct-message-info-row">
+              <span class="direct-message-avatar-wrap direct-message-avatar-wrap-medium">
+                <img
+                  class="direct-message-avatar"
+                  [src]="avatarSvgPath(directUser.id)"
+                  [alt]="directUser.name"
+                />
+              </span>
+              <span class="direct-message-info-name">{{ directUser.name }}</span>
+            </div>
+            <p class="direct-message-meta">
+              Diese Unterhaltung findet nur zwischen @{{ directUser.name }} und dir statt.
+            </p>
+          </div>
+        </div>
+      } @else {
+        <header class="chat-header">
+          <button
+            type="button"
+            class="channel-title"
+            aria-label="Channel-Details oeffnen"
+            (click)="toggleChannelEdition()"
+          >
+            <span class="channel-hash">#</span>
+            <span class="channel-name">{{ database.activeChannel()?.name ?? 'Channel' }}</span>
+            <span class="channel-arrow-down" aria-hidden="true"></span>
+          </button>
+
+          <div class="members-area" aria-label="Mitglieder">
+            <div class="members-preview-wrap">
+              <img src="/assets/members-preview-hover.svg" alt="" class="members-preview-hover" />
+              <div class="members-preview">
+                <button
+                  type="button"
+                  class="members-preview-button"
+                  aria-label="Mitglieder anzeigen"
+                  (click)="openMembersPanel()"
+                >
+                  <img src="/assets/members-preview.svg" alt="" class="members-preview-image" />
+                </button>
+              </div>
+              <button
+                type="button"
+                class="members-count"
                 aria-label="Mitglieder anzeigen"
                 (click)="openMembersPanel()"
               >
-                <img src="/assets/members-preview.svg" alt="" class="members-preview-image" />
+                {{ database.activeChannelMembers().length }}
               </button>
             </div>
             <button
               type="button"
-              class="members-count"
-              aria-label="Mitglieder anzeigen"
-              (click)="openMembersPanel()"
+              class="members-button"
+              aria-label="Mitglieder hinzufügen"
+              (click)="openAddMembersPanel()"
             >
-              {{ database.activeChannelMembers().length }}
+              <img src="/assets/person_add.svg" alt="hinzufügen" class="members-icon" />
             </button>
           </div>
-          <button
-            type="button"
-            class="members-button"
-            aria-label="Mitglieder hinzufügen"
-            (click)="openAddMembersPanel()"
-          >
-            <img src="/assets/person_add.svg" alt="hinzufügen" class="members-icon" />
-          </button>
-        </div>
-      </header>
+        </header>
+      }
 
       @if (membersPanelOpen()) {
         <div class="members-panel-backdrop" (click)="closeMembersPanel()">
@@ -417,6 +599,7 @@
         </div>
       }
 
+      @if (!showTodoList()) {
       <div class="chat-body">
         @for (message of database.channelMessages(); track message.id; let index = $index) {
           @if (shouldShowDateSeparator(index)) {
@@ -427,32 +610,117 @@
           }
 
           @if (database.isCurrentUser(message.authorId)) {
-            <article class="message message-right">
-              <div class="message-meta">
-                <span class="message-time">{{ database.formatTime(message.createdAt) }}</span>
-                <span class="message-name">{{ database.userName(message.authorId) }}</span>
-              </div>
-              <div class="speech-bubble">{{ message.body }}</div>
-              @if (message.reactions.length) {
-                <div class="reaction-bar">
-                  @for (reaction of message.reactions; track reaction.emoji) {
-                    <button type="button" class="reaction-chip" aria-label="Reaktion">
-                      <span class="reaction-icon reaction-check"></span>
-                      <span>{{ reaction.count }}</span>
+            <article class="message message-right" [class.message-editing]="editingMessageId() === message.id">
+              <div class="message-hover-toolbar message-hover-toolbar-own">
+                <img src="/assets/reaction-bar.svg" alt="" class="message-hover-toolbar-image" />
+                <button
+                  type="button"
+                  class="message-toolbar-hotspot message-toolbar-thread"
+                  aria-label="Thread öffnen"
+                  (click)="openMessageThread(message.id)"
+                ></button>
+                <button
+                  type="button"
+                  class="message-toolbar-hotspot message-toolbar-menu"
+                  aria-label="Mehr Optionen"
+                  (click)="toggleMessageMenu(message.id)"
+                ></button>
+                @if (activeMessageMenuId() === message.id) {
+                  <div class="message-edit-menu">
+                    <button
+                      type="button"
+                      class="message-edit-menu-item"
+                      (click)="startEditingMessage(message.id, message.body)"
+                    >
+                      Nachricht bearbeiten
                     </button>
+                  </div>
+                }
+              </div>
+              @if (editingMessageId() === message.id) {
+                <form
+                  class="message-edit-box"
+                  aria-label="Nachricht bearbeiten"
+                  (submit)="saveEditedMessage(message.id); $event.preventDefault()"
+                >
+                  <textarea
+                    name="editMessageDraft"
+                    class="message-edit-input"
+                    rows="3"
+                    [(ngModel)]="editMessageDraft"
+                  ></textarea>
+                  <div class="message-edit-actions">
+                    <button type="button" class="message-edit-cancel" (click)="cancelEditingMessage()">
+                      Abbrechen
+                    </button>
+                    <button type="submit" class="message-edit-save">
+                      Speichern
+                    </button>
+                  </div>
+                </form>
+              } @else {
+                <div class="message-meta">
+                  <span class="message-time">{{ formatMessageTimestamp(message.createdAt) }}</span>
+                  <span class="message-name">{{ database.userName(message.authorId) }}</span>
+                </div>
+                <div class="own-message-bubble-wrap">
+                  <div class="speech-bubble">{{ message.body }}</div>
+                  <span
+                    class="avatar message-avatar message-avatar-own"
+                    [class.avatar-1]="database.avatarClass(message.authorId) === 'avatar-1'"
+                    [class.avatar-2]="database.avatarClass(message.authorId) === 'avatar-2'"
+                    [class.avatar-3]="database.avatarClass(message.authorId) === 'avatar-3'"
+                    [class.avatar-4]="database.avatarClass(message.authorId) === 'avatar-4'"
+                  ></span>
+                </div>
+              }
+              @if (editingMessageId() !== message.id) {
+                <button
+                  type="button"
+                  class="message-thread-link message-thread-link-right"
+                  (click)="openMessageThread(message.id)"
+                >
+                  <span>{{ database.threadReplyCount(message.id) }} Antworten</span>
+                  @if (database.threadLastReplyTime(message.id); as lastReplyTime) {
+                    <span class="message-thread-last-reply">Letzte Antwort {{ lastReplyTime }}</span>
                   }
-                  <button
-                    type="button"
-                    class="reaction-chip reaction-add"
-                    aria-label="Reaktion hinzufuegen"
-                  >
-                    <span class="icon icon-plus"></span>
+                </button>
+                <div class="message-reaction-actions" aria-label="Reaktionen">
+                  @for (reaction of message.reactions; track reaction.emoji) {
+                    <div class="reaction-chip-wrap">
+                      <button type="button" class="reaction-chip" aria-label="Reaktion">
+                        <span class="reaction-icon reaction-icon-text">{{
+                          reactionIcon(reaction.emoji)
+                        }}</span>
+                        <span>{{ reaction.count }}</span>
+                      </button>
+                      <span class="reaction-hover-bubble thread-reaction-hover-bubble">
+                        <span class="thread-reaction-hover-icon">{{ reactionIcon(reaction.emoji) }}</span>
+                        <span class="thread-reaction-hover-user">{{ reactionHoverUser(reaction) }}</span>
+                        <span class="thread-reaction-hover-text">hat {{ reaction.count }} mal reagiert</span>
+                      </span>
+                    </div>
+                  }
+                  <button type="button" class="message-reaction-action" aria-label="Reaktion hinzufügen">
+                    <img src="/assets/add-reaction.png" alt="" class="message-reaction-icon" />
+                  </button>
+                  <button type="button" class="message-reaction-action" aria-label="Weitere Aktionen">
+                    <img src="/assets/menu.svg" alt="" class="message-reaction-menu-icon" />
                   </button>
                 </div>
               }
             </article>
           } @else {
             <article class="message message-left">
+              <div class="message-hover-toolbar message-hover-toolbar-left">
+                <img src="/assets/reaction-bar.svg" alt="" class="message-hover-toolbar-image" />
+                <button
+                  type="button"
+                  class="message-toolbar-hotspot message-toolbar-thread"
+                  aria-label="Thread öffnen"
+                  (click)="openMessageThread(message.id)"
+                ></button>
+              </div>
               <span
                 class="avatar message-avatar"
                 [class.avatar-1]="database.avatarClass(message.authorId) === 'avatar-1'"
@@ -463,9 +731,42 @@
               <div class="message-content">
                 <div class="message-meta">
                   <span class="message-name">{{ database.userName(message.authorId) }}</span>
-                  <span class="message-time">{{ database.formatTime(message.createdAt) }}</span>
+                  <span class="message-time">{{ formatMessageTimestamp(message.createdAt) }}</span>
                 </div>
                 <div class="speech-bubble speech-bubble-left">{{ message.body }}</div>
+                <button
+                  type="button"
+                  class="message-thread-link"
+                  (click)="openMessageThread(message.id)"
+                >
+                  <span>{{ database.threadReplyCount(message.id) }} Antworten</span>
+                  @if (database.threadLastReplyTime(message.id); as lastReplyTime) {
+                    <span class="message-thread-last-reply">Letzte Antwort {{ lastReplyTime }}</span>
+                  }
+                </button>
+                <div class="message-reaction-actions" aria-label="Reaktionen">
+                  @for (reaction of message.reactions; track reaction.emoji) {
+                    <div class="reaction-chip-wrap">
+                      <button type="button" class="reaction-chip" aria-label="Reaktion">
+                        <span class="reaction-icon reaction-icon-text">{{
+                          reactionIcon(reaction.emoji)
+                        }}</span>
+                        <span>{{ reaction.count }}</span>
+                      </button>
+                      <span class="reaction-hover-bubble thread-reaction-hover-bubble">
+                        <span class="thread-reaction-hover-icon">{{ reactionIcon(reaction.emoji) }}</span>
+                        <span class="thread-reaction-hover-user">{{ reactionHoverUser(reaction) }}</span>
+                        <span class="thread-reaction-hover-text">hat {{ reaction.count }} mal reagiert</span>
+                      </span>
+                    </div>
+                  }
+                  <button type="button" class="message-reaction-action" aria-label="Reaktion hinzufügen">
+                    <img src="/assets/add-reaction.png" alt="" class="message-reaction-icon" />
+                  </button>
+                  <button type="button" class="message-reaction-action" aria-label="Weitere Aktionen">
+                    <img src="/assets/menu.svg" alt="" class="message-reaction-menu-icon" />
+                  </button>
+                </div>
               </div>
             </article>
           }
@@ -495,11 +796,10 @@
         }
         @if (showContactSuggestions()) {
           <div class="contact-suggestions-list">
-            @for (contact of contactSuggestions(); track contact.id; let index = $index) {
+            @for (contact of contactSuggestions(); track contact.id) {
               <button
                 type="button"
                 class="contact-suggestion-item"
-                [class.contact-suggestion-item-active]="index === 0"
                 (click)="selectContactSuggestion(contact.name)"
               >
                 <span class="contact-suggestion-avatar-wrap">
@@ -527,14 +827,40 @@
           [(ngModel)]="chatMessageDraft"
           class="message-input"
           rows="2"
-          [placeholder]="'Nachricht an ' + (database.activeChannel()?.name ?? 'Channel')"
+          [placeholder]="
+            showMainChatIntro()
+              ? 'Starte eine neue Nachricht'
+              : selectedDirectMessageUserId()
+                ? 'Nachricht an ' + (directMessageUser()?.name ?? 'Kontakt')
+              : 'Nachricht an ' + (database.activeChannel()?.name ?? 'Channel')
+          "
         ></textarea>
 
         <div class="message-actions">
           <div class="add-elements">
-            <button type="button" class="action-button" aria-label="Emoji hinzufuegen">
-              <img src="/assets/emo.svg" alt="" class="action-icon" />
+            <button
+              type="button"
+              class="action-button action-button-emoji"
+              aria-label="Emoji hinzufuegen"
+              (click)="toggleEmojiPicker('message')"
+            >
+              <img src="/assets/add-reaction.png" alt="" class="action-icon action-icon-small" />
             </button>
+            @if (activeEmojiPicker() === 'message') {
+              <div class="emoji-picker-overlay" (click)="closeEmojiPicker()"></div>
+              <div class="emoji-picker-popover">
+                <emoji-mart
+                  (emojiSelect)="onMessageEmojiSelect($event, 'message')"
+                  [enableSearch]="false"
+                  [emojiSize]="36"
+                  [include]="emojiCategories"
+                  [showPreview]="false"
+                  [showSingleCategory]="true"
+                  [perLine]="9"
+                  [totalFrequentLines]="1"
+                ></emoji-mart>
+              </div>
+            }
             <button
               type="button"
               class="action-button"
@@ -550,6 +876,7 @@
           </button>
         </div>
       </form>
+      }
     </div>
   </section>
 
@@ -662,12 +989,17 @@
     </div>
   }
 
-  <aside class="right-panel" [class.right-panel-collapsed]="threadCollapsed()" aria-label="Thread">
+  <aside
+    class="right-panel"
+    [class.right-panel-collapsed]="threadCollapsed()"
+    [class.right-panel-main-chat-hidden]="showMainChatIntro()"
+    aria-label="Thread"
+  >
     <div class="thread-card">
       <header class="thread-header">
         <div class="thread-title-group">
           <span class="thread-title">Thread</span>
-          <span class="thread-tag-icon"></span>
+          <span class="thread-tag-prefix">#</span>
           <span class="thread-channel">{{ database.activeChannel()?.name ?? 'Channel' }}</span>
         </div>
 
@@ -684,17 +1016,13 @@
       <div class="thread-body">
         @if (database.activeThreadOrigin(); as origin) {
           <article class="thread-message thread-message-left thread-origin">
-            <span
-              class="thread-avatar"
-              [class.avatar-1]="database.avatarClass(origin.authorId) === 'avatar-1'"
-              [class.avatar-2]="database.avatarClass(origin.authorId) === 'avatar-2'"
-              [class.avatar-3]="database.avatarClass(origin.authorId) === 'avatar-3'"
-              [class.avatar-4]="database.avatarClass(origin.authorId) === 'avatar-4'"
-            ></span>
+            <img class="thread-avatar" [src]="avatarSvgPath(origin.authorId)" [alt]="database.userName(origin.authorId)" />
             <div class="thread-content-block">
               <div class="thread-message-meta">
-                <span class="thread-message-name">{{ database.userName(origin.authorId) }}</span>
-                <span class="thread-message-time">{{ database.formatTime(origin.createdAt) }}</span>
+                <span class="thread-message-name">
+                  {{ threadUserName(origin.authorId) }}
+                </span>
+                <span class="thread-message-time">{{ formatThreadMetaTimestamp(origin.createdAt) }}</span>
               </div>
               <p class="thread-bubble">{{ origin.body }}</p>
             </div>
@@ -708,58 +1036,268 @@
 
         @for (reply of database.threadMessages(); track reply.id) {
           @if (database.isCurrentUser(reply.authorId)) {
-            <article class="thread-message thread-message-right thread-reply-small">
+            <article 
+              class="thread-message thread-message-right thread-reply-small"
+              [class.thread-message-active]="activeThreadReactionBarId() === reply.id"
+            >
               <div class="thread-content-block thread-content-right">
                 <div class="thread-message-meta thread-message-meta-right">
-                  <span class="thread-message-time">{{
-                    database.formatTime(reply.createdAt)
-                  }}</span>
-                  <span class="thread-message-name">{{ database.userName(reply.authorId) }}</span>
+                  <span class="thread-message-time">{{ formatThreadMetaTimestamp(reply.createdAt) }}</span>
+                  <span class="thread-message-name">
+                    {{ threadUserName(reply.authorId) }}
+                  </span>
+                  @if (activeThreadReactionBarId() !== reply.id) {
+                    <div class="thread-edit-box" aria-label="Nachricht Aktionen">
+                      <button
+                        type="button"
+                        class="thread-edit-icon-button"
+                        aria-label="Reaktion hinzufügen"
+                        (click)="toggleThreadReactionBar(reply.id); $event.stopPropagation()"
+                      >
+                        <img src="/assets/add%20re.svg" alt="" class="thread-edit-box-icon thread-edit-box-icon-add" />
+                      </button>
+                      <button
+                        type="button"
+                        class="thread-edit-icon-button"
+                        aria-label="Weitere Aktionen"
+                        (click)="toggleThreadEditMenu(reply.id); $event.stopPropagation()"
+                      >
+                        <img src="/assets/menu.svg" alt="" class="thread-edit-box-icon thread-edit-box-icon-menu" />
+                      </button>
+                      @if (activeThreadEditMenuId() === reply.id) {
+                        <div class="thread-edit-menu" (click)="$event.stopPropagation()">
+                          <button
+                            type="button"
+                            class="thread-edit-menu-item"
+                            (click)="startEditingThreadMessage(reply.id, reply.body)"
+                          >
+                            Nachricht bearbeiten
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
-                <p class="thread-bubble thread-bubble-own">{{ reply.body }}</p>
-              </div>
-              <span
-                class="thread-avatar"
-                [class.avatar-1]="database.avatarClass(reply.authorId) === 'avatar-1'"
-                [class.avatar-2]="database.avatarClass(reply.authorId) === 'avatar-2'"
-                [class.avatar-3]="database.avatarClass(reply.authorId) === 'avatar-3'"
-                [class.avatar-4]="database.avatarClass(reply.authorId) === 'avatar-4'"
-              ></span>
-            </article>
-          } @else {
-            <article class="thread-message thread-message-left thread-reply-large">
-              <span
-                class="thread-avatar"
-                [class.avatar-1]="database.avatarClass(reply.authorId) === 'avatar-1'"
-                [class.avatar-2]="database.avatarClass(reply.authorId) === 'avatar-2'"
-                [class.avatar-3]="database.avatarClass(reply.authorId) === 'avatar-3'"
-                [class.avatar-4]="database.avatarClass(reply.authorId) === 'avatar-4'"
-              ></span>
-              <div class="thread-content-block thread-content-wide">
-                <div class="thread-message-meta">
-                  <span class="thread-message-name">{{ database.userName(reply.authorId) }}</span>
-                  <span class="thread-message-time">{{
-                    database.formatTime(reply.createdAt)
-                  }}</span>
-                </div>
-                <p class="thread-bubble thread-bubble-large">{{ reply.body }}</p>
-                @if (reply.reactions.length) {
-                  <div class="thread-reactions">
-                    @for (reaction of reply.reactions; track reaction.emoji) {
-                      <button type="button" class="thread-reaction-chip" aria-label="Reaktion">
-                        <span class="thread-emoji">+</span>
+                @if (editingMessageId() === reply.id) {
+                  <form
+                    class="message-edit-box thread-message-edit-box"
+                    aria-label="Nachricht bearbeiten"
+                    (submit)="saveEditedMessage(reply.id); $event.preventDefault()"
+                  >
+                    <textarea
+                      name="editThreadMessageDraft"
+                      class="message-edit-input"
+                      rows="3"
+                      [(ngModel)]="editMessageDraft"
+                    ></textarea>
+                    <div class="message-edit-actions">
+                      <button type="button" class="message-edit-cancel" (click)="cancelEditingMessage()">
+                        Abbrechen
+                      </button>
+                      <button type="submit" class="message-edit-save">
+                        Speichern
+                      </button>
+                    </div>
+                  </form>
+                } @else {
+                  <p class="thread-bubble thread-bubble-own">{{ reply.body }}</p>
+                }
+                <div class="thread-reactions thread-reactions-own" aria-label="Reaktionen">
+                  @for (reaction of reply.reactions; track reaction.emoji) {
+                    <div class="reaction-chip-wrap thread-reaction-chip-wrap">
+                      <button type="button" class="reaction-chip thread-reaction-chip" aria-label="Reaktion">
+                        <span class="reaction-icon reaction-icon-text">{{
+                          reactionIcon(reaction.emoji)
+                        }}</span>
                         <span>{{ reaction.count }}</span>
                       </button>
-                    }
+                      <span class="reaction-hover-bubble thread-reaction-hover-bubble">
+                        <span class="thread-reaction-hover-icon">{{ reactionIcon(reaction.emoji) }}</span>
+                        <span class="thread-reaction-hover-user">{{ reactionHoverUser(reaction) }}</span>
+                        <span class="thread-reaction-hover-text">hat {{ reaction.count }} mal reagiert</span>
+                      </span>
+                    </div>
+                  }
+                </div>
+                @if (activeThreadReactionBarId() === reply.id) {
+                  <div
+                    class="thread-reaction-overlay"
+                    (pointerdown)="closeThreadReactionBar(); $event.stopPropagation()"
+                    (mousedown)="closeThreadReactionBar(); $event.stopPropagation()"
+                    (touchstart)="closeThreadReactionBar(); $event.stopPropagation()"
+                    (click)="closeThreadReactionBar(); $event.stopPropagation()"
+                  ></div>
+                }
+                <div
+                  class="thread-reaction-popover"
+                  [class.thread-reaction-popover-hidden]="activeThreadReactionBarId() !== reply.id"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="thread-reaction-actions thread-reaction-actions-thread" aria-label="Reaktionen">
                     <button
                       type="button"
-                      class="thread-reaction-add"
-                      aria-label="Reaktion hinzufuegen"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Klatschen"
+                      (click)="addReaction(reply.id, 'hands'); closeThreadReactionBar(); $event.stopPropagation()"
                     >
-                      <span class="icon icon-plus"></span>
+                      <span class="thread-reaction-emoji">&#128079;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Herz"
+                      (click)="addReaction(reply.id, 'heart'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#10084;&#65039;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Lachen"
+                      (click)="addReaction(reply.id, 'smile'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#128514;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Erstaunt"
+                      (click)="addReaction(reply.id, 'open_mouth'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#128558;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Weinen"
+                      (click)="addReaction(reply.id, 'sad'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#128546;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Weitere Reaktionen"
+                      (click)="toggleEmojiPicker('thread'); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-plus">+</span>
                     </button>
                   </div>
+                </div>
+              </div>
+              <img class="thread-avatar" [src]="avatarSvgPath(reply.authorId)" [alt]="database.userName(reply.authorId)" />
+            </article>
+          } @else {
+            <article 
+              class="thread-message thread-message-left thread-reply-large"
+              [class.thread-message-active]="activeThreadReactionBarId() === reply.id"
+            >
+              <img class="thread-avatar" [src]="avatarSvgPath(reply.authorId)" [alt]="database.userName(reply.authorId)" />
+              <div class="thread-content-block thread-content-wide">
+                <div class="thread-message-meta">
+                  <span class="thread-message-name">
+                    {{ threadUserName(reply.authorId) }}
+                  </span>
+                  <span
+                    class="thread-message-time thread-message-time-with-icon"
+                    [class.thread-time-icon-hidden]="activeThreadReactionBarId() === reply.id"
+                    (click)="toggleThreadReactionBar(reply.id); $event.stopPropagation()"
+                  >
+                    <span>{{ formatThreadMetaTimestamp(reply.createdAt) }}</span>
+                    <img src="/assets/singelicon.svg" alt="" class="thread-time-icon" />
+                  </span>
+                </div>
+                <p class="thread-bubble thread-bubble-large">{{ reply.body }}</p>
+                <div class="thread-reactions" aria-label="Reaktionen">
+                  @for (reaction of reply.reactions; track reaction.emoji) {
+                    <div class="reaction-chip-wrap thread-reaction-chip-wrap">
+                      <button type="button" class="reaction-chip thread-reaction-chip" aria-label="Reaktion">
+                        <span class="reaction-icon reaction-icon-text">{{
+                          reactionIcon(reaction.emoji)
+                        }}</span>
+                        <span>{{ reaction.count }}</span>
+                      </button>
+                      <span class="reaction-hover-bubble thread-reaction-hover-bubble">
+                        <span class="thread-reaction-hover-icon">{{ reactionIcon(reaction.emoji) }}</span>
+                        <span class="thread-reaction-hover-user">{{ reactionHoverUser(reaction) }}</span>
+                        <span class="thread-reaction-hover-text">hat {{ reaction.count }} mal reagiert</span>
+                      </span>
+                    </div>
+                  }
+                  <button
+                    type="button"
+                    class="thread-reaction-add"
+                    aria-label="Weitere Reaktionen"
+                    (click)="toggleThreadReactionBar(reply.id); $event.stopPropagation()"
+                  >
+                    <img src="/assets/emoji-menu.svg" alt="" class="message-reaction-icon" />
+                  </button>
+                </div>
+                @if (activeThreadReactionBarId() === reply.id) {
+                  <div
+                    class="thread-reaction-overlay"
+                    (pointerdown)="closeThreadReactionBar(); $event.stopPropagation()"
+                    (mousedown)="closeThreadReactionBar(); $event.stopPropagation()"
+                    (touchstart)="closeThreadReactionBar(); $event.stopPropagation()"
+                    (click)="closeThreadReactionBar(); $event.stopPropagation()"
+                  ></div>
                 }
+                <div
+                  class="thread-reaction-popover"
+                  [class.thread-reaction-popover-hidden]="activeThreadReactionBarId() !== reply.id"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="thread-reaction-actions thread-reaction-actions-thread" aria-label="Reaktionen">
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Klatschen"
+                      (click)="addReaction(reply.id, 'hands'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#128079;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Herz"
+                      (click)="addReaction(reply.id, 'heart'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#10084;&#65039;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Lachen"
+                      (click)="addReaction(reply.id, 'smile'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#128514;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Erstaunt"
+                      (click)="addReaction(reply.id, 'open_mouth'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#128558;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Reaktion Weinen"
+                      (click)="addReaction(reply.id, 'sad'); closeThreadReactionBar(); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-emoji">&#128546;</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="message-reaction-action"
+                      aria-label="Weitere Reaktionen"
+                      (click)="toggleEmojiPicker('thread'); $event.stopPropagation()"
+                    >
+                      <span class="thread-reaction-plus">+</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </article>
           }
@@ -770,12 +1308,40 @@
         class="thread-input-box"
         aria-label="Antwort schreiben"
         (submit)="
-          sendThreadReply(threadMessage.value); threadMessage.value = ''; $event.preventDefault()
+          sendThreadReply(threadMessageDraft); threadMessageDraft = ''; $event.preventDefault()
         "
       >
+        @if (showThreadContactSuggestions()) {
+          <div class="contact-suggestions-list thread-contact-suggestions-list">
+            @for (contact of threadContactSuggestions(); track contact.id) {
+              <button
+                type="button"
+                class="contact-suggestion-item"
+                (click)="selectThreadContactSuggestion(contact.name)"
+              >
+                <span class="contact-suggestion-avatar-wrap">
+                  <img
+                    class="contact-suggestion-avatar"
+                    [src]="avatarSvgPath(contact.id)"
+                    [alt]="contact.name"
+                  />
+                  <span
+                    class="contact-suggestion-status"
+                    [class.online]="contact.isOnline"
+                    [class.offline]="!contact.isOnline"
+                    [attr.aria-label]="contact.isOnline ? 'Aktiv' : 'Deaktiviert'"
+                  ></span>
+                </span>
+                <span class="contact-suggestion-name">{{ contact.name }}</span>
+              </button>
+            }
+          </div>
+        }
         <textarea
           id="thread-message"
           #threadMessage
+          name="threadMessage"
+          [(ngModel)]="threadMessageDraft"
           class="thread-input"
           rows="2"
           placeholder="Antworten..."
@@ -783,10 +1349,35 @@
 
         <div class="thread-input-actions">
           <div class="thread-input-left-actions">
-            <button type="button" class="action-button" aria-label="Emoji hinzufuegen">
-              <img src="/assets/emo.svg" alt="" class="action-icon" />
+            <button
+              type="button"
+              class="action-button action-button-emoji"
+              aria-label="Emoji hinzufuegen"
+              (click)="toggleEmojiPicker('thread')"
+            >
+              <img src="/assets/add-reaction.png" alt="" class="action-icon action-icon-small" />
             </button>
-            <button type="button" class="action-button" aria-label="Erwaehnung hinzufuegen">
+            @if (activeEmojiPicker() === 'thread') {
+              <div class="emoji-picker-overlay" (click)="closeEmojiPicker()"></div>
+              <div class="emoji-picker-popover emoji-picker-popover-thread">
+                <emoji-mart
+                  (emojiSelect)="onMessageEmojiSelect($event, 'thread')"
+                  [enableSearch]="false"
+                  [emojiSize]="36"
+                  [include]="emojiCategories"
+                  [showPreview]="false"
+                  [showSingleCategory]="true"
+                  [perLine]="9"
+                  [totalFrequentLines]="1"
+                ></emoji-mart>
+              </div>
+            }
+            <button
+              type="button"
+              class="action-button"
+              aria-label="Erwaehnung hinzufuegen"
+              (click)="insertThreadMentionTrigger()"
+            >
               <img src="/assets/at.svg" alt="" class="action-icon" />
             </button>
           </div>
@@ -868,7 +1459,11 @@
 
             @if (!isCurrentProfileUser()) {
               <div class="profile-modal-message-action">
-                <button type="button" class="profile-modal-message-button">
+                <button
+                  type="button"
+                  class="profile-modal-message-button"
+                  (click)="messageProfileUser()"
+                >
                   <img src="/assets/mode_comment.svg" alt="" class="profile-modal-message-icon" />
                   <span>Nachricht</span>
                 </button>
