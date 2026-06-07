@@ -12,14 +12,14 @@
   "packageManager": "npm@11.12.1",
   "dependencies": {
     "@angular/cdk": "^22.0.0",
-    "@angular/common": "^21.2.0",
-    "@angular/compiler": "^21.2.0",
-    "@angular/core": "^21.2.0",
+    "@angular/common": "^22.0.0",
+    "@angular/compiler": "^22.0.0",
+    "@angular/core": "^22.0.0",
     "@angular/fire": "^21.0.0-rc.0",
-    "@angular/forms": "^21.2.0",
+    "@angular/forms": "^22.0.0",
     "@angular/material": "^22.0.0",
-    "@angular/platform-browser": "^21.2.0",
-    "@angular/router": "^21.2.0",
+    "@angular/platform-browser": "^22.0.0",
+    "@angular/router": "^22.0.0",
     "@ctrl/ngx-emoji-mart": "^9.3.0",
     "emoji-picker-element": "^1.29.1",
     "firebase": "^11.10.0",
@@ -27,10 +27,10 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.12",
-    "@angular/cli": "^21.2.12",
-    "@angular/compiler-cli": "^21.2.0",
+    "@angular/build": "^22.0.0",
+    "@angular/cli": "^22.0.0",
+    "@angular/compiler-cli": "^22.0.0",
     "prettier": "^3.8.1",
-    "typescript": "~5.9.2"
+    "typescript": "~6.0.3"
   }
 }
